@@ -5,8 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "build": "echo 'Build complete'"
+    "dev": "node server.js"
   },
   "keywords": [
     "dms",
