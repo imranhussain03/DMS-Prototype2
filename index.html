@@ -7,7 +7,7 @@
   <meta name="description" content="Innomick Technologies Enterprise Document Management System (DMS) Prototype powered by modern SharePoint architecture.">
   <base href="/">
   <link rel="icon" type="image/png" href="assets/innomick_logo_square.png">
-  <link rel="stylesheet" href="style.css?v=20261023_v17">
+  <link rel="stylesheet" href="style.css?v=20261023_v26">
 </head>
 <body>
 
@@ -463,16 +463,19 @@
         </div>
       </form>
 
-      <!-- Step 2: Select Workflow (Exact Match with Live SharePoint Video Screenshot) -->
+      <!-- Step 2: Select Workflow (Exact Match with Live SharePoint Screenshots 2 & 4) -->
       <div id="uploadStep2Container" style="display: none;">
         <div class="modal-body" style="padding: 28px 24px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
             <!-- Individual Workflow Card -->
             <div class="workflow-choice-card" id="choiceCardIndividual" onclick="showSelectIndividualWorkflow()" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; background: #fff; transition: all 0.15s;">
               <div style="width: 36px; height: 36px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="6" r="2.5" fill="#fff"/>
+                  <circle cx="6" cy="18" r="2.5" fill="#fff"/>
+                  <circle cx="18" cy="18" r="2.5" fill="#fff"/>
+                  <path d="M12 8.5v4"/>
+                  <path d="M6 15.5v-3h12v3"/>
                 </svg>
               </div>
               <span style="font-size: 13.5px; font-weight: 600; color: #1e293b;">Individual Workflow</span>
@@ -481,11 +484,12 @@
             <!-- Group Workflow Card -->
             <div class="workflow-choice-card" id="choiceCardGroup" onclick="showSelectGroupWorkflow()" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; background: #fff; transition: all 0.15s;">
               <div style="width: 36px; height: 36px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                  <circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="6" r="2.5" fill="#fff"/>
+                  <circle cx="6" cy="18" r="2.5" fill="#fff"/>
+                  <circle cx="18" cy="18" r="2.5" fill="#fff"/>
+                  <path d="M12 8.5v4"/>
+                  <path d="M6 15.5v-3h12v3"/>
                 </svg>
               </div>
               <span style="font-size: 13.5px; font-weight: 600; color: #1e293b;">Group Workflow</span>
@@ -493,9 +497,9 @@
           </div>
         </div>
 
-        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
-          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
-          <button type="button" id="btnSkipWorkflow" class="btn-primary-teal" onclick="executeSkipWorkflowUpload()" style="border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600;">Skip workflow</button>
+        <div class="modal-footer" id="uploadStep2Footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+          <button type="button" class="btn-cancel-teal" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 22px; font-size: 13px; border: 1px solid #008272; background: #fff; color: #008272; font-weight: 500; cursor: pointer;">Cancel</button>
+          <button type="button" id="btnSkipApproval" class="btn-skip-approval" onclick="executeSkipWorkflowUpload()" style="display: none; border-radius: 4px; padding: 6px 20px; font-size: 13px; border: 1px solid #008272; background: #008272; color: #fff; font-weight: 500; cursor: pointer;">Skip approval</button>
         </div>
       </div>
 
@@ -590,8 +594,134 @@
           <button type="button" class="btn-primary-teal" onclick="executeWorkflowUploadSubmit()" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Submit</button>
         </div>
       </div>
+
+      <!-- Direct Upload Step 2: Select Folder (Exact Match with Live SharePoint Screenshot) -->
+      <div id="uploadDirectFolderContainer" style="display: none;">
+        <div class="modal-body" style="padding: 24px;">
+          <!-- Yellow Note Box -->
+          <div class="sp-direct-upload-note">
+            <div class="sp-direct-upload-note-title">Note:</div>
+            <ol class="sp-direct-upload-note-list">
+              <li>Click on the "Select folder" icon below</li>
+              <li>Choose the folder and save the path</li>
+            </ol>
+          </div>
+
+          <!-- Select Folder Input Field -->
+          <div class="sp-direct-folder-select-box" id="directFolderSelectBox" onclick="openDirectUploadFolderDrawer()">
+            <div id="directFolderDisplayContent" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              <span id="directFolderPlaceholder" style="color: #64748b; font-size: 13.5px;">Select a folder</span>
+              <button type="button" class="sp-folder-icon-btn" title="Select Folder" style="background: none; border: none; cursor: pointer; color: #008272; display: flex; align-items: center;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" id="btnDirectFolderNext" class="btn-primary-teal" onclick="proceedToDirectUploadConfirmation()" disabled style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600; opacity: 0.5; background: #e2e8f0; color: #94a3b8; cursor: not-allowed; border: none;">Next</button>
+        </div>
+      </div>
+
+      <!-- Direct Upload Step 3: Upload Confirmation (Exact Match with Live SharePoint Screenshot) -->
+      <div id="uploadDirectConfirmContainer" style="display: none;">
+        <div class="modal-body" style="padding: 44px 24px; text-align: center;">
+          <div style="font-size: 16px; font-weight: 600; color: #008272; line-height: 1.6; max-width: 380px; margin: 0 auto;">
+            Are you sure you want to upload the document to the selected folder?
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" class="btn-primary-teal" onclick="executeDirectUploadConfirm()" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600; cursor: pointer;">Upload</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <!-- Direct Upload Right-side Folder Drawer (Exact Match with Live SharePoint Screenshot 3) -->
+  <div id="directUploadDrawerBackdrop" class="direct-upload-drawer-backdrop" onclick="closeDirectUploadFolderDrawer()" style="display: none;"></div>
+  <div id="directUploadFolderDrawer" class="direct-upload-drawer" style="display: none;">
+    <div class="drawer-header" style="padding: 18px 20px 14px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+      <h3 style="font-size: 17px; font-weight: 600; color: #1e293b; margin: 0;">Select folder</h3>
+      <button type="button" onclick="closeDirectUploadFolderDrawer()" style="background: none; border: none; font-size: 20px; color: #64748b; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="drawer-body" style="padding: 18px 20px; flex: 1; overflow-y: auto;">
+      <!-- Breadcrumb Subtitle -->
+      <div id="directDrawerBreadcrumb" style="font-size: 13.5px; font-weight: 600; color: #334155; margin-bottom: 16px;">
+        Hospital Director Office &gt; Direct Uploads
+      </div>
+
+      <!-- Search input -->
+      <div class="drawer-search-wrapper" style="position: relative; margin-bottom: 18px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%);">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="directFolderSearchInput" placeholder="Filter folders by name" oninput="filterDirectUploadFolders(this.value)" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px 12px 8px 34px; font-size: 13px; outline: none; box-sizing: border-box;">
+      </div>
+
+      <!-- Folders list -->
+      <div id="directDrawerFoldersList" style="display: flex; flex-direction: column; gap: 4px;">
+        <!-- Populated dynamically based on department -->
+      </div>
+
+      <!-- Drawer Actions (Save & Cancel buttons) -->
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 24px;">
+        <button type="button" class="btn-primary-teal" onclick="saveDirectUploadSelectedFolder()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 20px; font-size: 13px; font-weight: 600; border-radius: 4px; cursor: pointer;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+          Save
+        </button>
+        <button type="button" class="btn-secondary" onclick="closeDirectUploadFolderDrawer()" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 18px; font-size: 13px; font-weight: 500; border-radius: 4px; cursor: pointer; border: 1px solid #cbd5e1; background: #fff; color: #475569;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload Success Popup Dialog (Exact Match with Live SharePoint Screenshot) -->
+  <div class="modal-overlay" id="uploadSuccessModal" onclick="closeUploadSuccessModal()">
+    <div class="dms-modal-dialog" onclick="event.stopPropagation()" style="background: #ffffff; max-width: 480px; width: 90%; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.25);">
+      <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+        <h3 style="font-size: 15px; font-weight: 600; color: #008272; margin: 0;">Info</h3>
+        <button type="button" onclick="closeUploadSuccessModal()" style="background: none; border: none; color: #008272; cursor: pointer; display: flex; align-items: center; padding: 0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 36px 24px; display: flex; align-items: center; justify-content: center; gap: 14px;">
+        <span id="uploadSuccessMessage" style="font-size: 16px; font-weight: 500; color: #008272;">Successfully submitted !</span>
+        <div style="width: 38px; height: 38px; border-radius: 50%; background: #008272; color: #ffffff; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 12px 20px 16px; display: flex; justify-content: flex-end; border-top: none;">
+        <button type="button" class="btn-primary-teal" onclick="closeUploadSuccessModal()" style="background: #008272; border: none; border-radius: 4px; padding: 7px 24px; font-size: 13.5px; font-weight: 500; color: #ffffff; cursor: pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Create Workflow Modal (Exact Match with Live SharePoint Screenshot 15) -->
   <div class="modal-overlay" id="createWorkflowModal">
@@ -1695,7 +1825,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="data.js?v=20261023_v17"></script>
-  <script src="app.js?v=20261023_v17"></script>
+  <script src="data.js?v=20261023_v26"></script>
+  <script src="app.js?v=20261023_v26"></script>
 </body>
 </html>

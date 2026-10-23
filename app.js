@@ -38,7 +38,17 @@ const AppState = {
   hasUnreadInbox: true,
   activeApprovalDocId: '1084/2042',
   pendingRemarksAction: 'Approve',
-  pendingRemarksDocId: '1084/2042'
+  pendingRemarksDocId: '1084/2042',
+  homeRecentViewAll: false,
+  homeInboxViewAll: false,
+  homeAllFilesViewAll: false,
+  favoritesPage: 1,
+  favoritesPageSize: 10,
+  activeDeptFolder: null,
+  isDirectUploadMode: false,
+  directUploadSelectedFolder: null,
+  directUploadTempFolder: null,
+  directUploadFilterQuery: ''
 };
 
 // Document type SVG icons
@@ -193,18 +203,22 @@ function handleRouteChange() {
     AppState.currentRoute = 'department';
     let branch = 'Innomick Al-Assima Hospital';
     let dept = 'Information Technology';
+    let folder = null;
     
     if (hash.includes('?')) {
       const queryStr = hash.substring(hash.indexOf('?') + 1);
       const params = new URLSearchParams(queryStr);
       const rawBranch = params.get('branch');
       const rawDept = params.get('dept');
+      const rawFolder = params.get('folder');
       if (rawBranch) branch = decodeParam(rawBranch);
       if (rawDept) dept = decodeParam(rawDept);
+      if (rawFolder) folder = decodeParam(rawFolder);
     }
     
     AppState.activeBranch = branch;
     AppState.activeDepartment = dept;
+    AppState.activeDeptFolder = folder;
     AppState.activeCategoryDrilldown = null;
   } else if (hash.startsWith('category/') || hash.startsWith('categories?cat=')) {
     let rawCat = '';
@@ -240,6 +254,13 @@ function decodeParam(str) {
       return b64;
     }
   } catch(e) {}
+  if (dec.includes('Ahmadi') || dec.startsWith('SW5ub21pY2sgQWwtQWht')) return 'Innomick Al-Ahmadi Hospital';
+  if (dec.includes('Assima') || dec.startsWith('SW5ub21pY2sgQWwtQXNz')) return 'Innomick Al-Assima Hospital';
+  if (dec.startsWith('SG9zcGl0YWwgRGly')) return 'Hospital Director Office';
+  if (dec.startsWith('SW5mb3JtYXRpb24g')) return 'Information Technology';
+  if (dec.startsWith('RGlyZWN0IFVwbG9h')) return 'Direct Uploads';
+  if (dec.startsWith('VGVzdGluZw')) return 'Testing';
+  if (dec.startsWith('T2ZmaWNlIEZpbGVz')) return 'Office Files';
   return dec;
 }
 
@@ -514,10 +535,17 @@ function renderHomeView() {
       `).join('')}
     </div>
 
-    <!-- Recent Documents Section -->
-    <div class="section-title-row">
-      <h2 class="section-heading">Recent Documents</h2>
-      <a class="section-link" onclick="navigateTo('organization')">View all</a>
+    <!-- Recent Documents Section (13 Columns: Favorite, Name, Last Accessed, Location, Owner, Category, Sub Category, Department, Reference Number, Stake Holder, Vendor, Upload Date, Description) -->
+    <div class="home-section-title-row">
+      <h2>Recent Documents</h2>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <a class="home-view-all-link" onclick="toggleHomeRecentViewAll(event)" style="cursor: pointer;">
+          ${AppState.homeRecentViewAll ? 'Show less (15)' : `View all (${(InnomickData.recentDocuments || []).length})`}
+        </a>
+        <a class="home-view-all-link" onclick="navigateTo('organization')" title="Open Organization Documents Page" style="font-size: 12px; color: #64748b; font-weight: normal; cursor: pointer;">
+          All files &rarr;
+        </a>
+      </div>
     </div>
 
     <div class="table-card-container" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 24px;">
@@ -525,21 +553,31 @@ function renderHomeView() {
         <button class="info-circle-btn" title="View details & properties" style="width: 22px; height: 22px; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff; color: #64748b; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;">ⓘ</button>
       </div>
       <div style="overflow-x: auto;">
+        ${(InnomickData.recentDocuments || []).length === 0 ? `
+          <div class="empty-state-card" style="padding: 48px 16px; text-align: center; background: transparent; border: none; box-shadow: none;">
+            <p style="color: #008272; font-weight: 500; font-size: 14px; margin: 0;">No recent documents found</p>
+          </div>
+        ` : `
         <table class="dms-data-table" style="min-width: 100%; border-top: 1px solid #f1f5f9;">
           <thead>
             <tr class="header-row">
-              <th style="width: 50px; text-align: center;">Favorite</th>
-              <th style="min-width: 260px;">Name</th>
+              <th style="width: 48px; text-align: center;">Favorite</th>
+              <th style="min-width: 250px;">Name</th>
               <th style="min-width: 130px;">Last Accessed</th>
               <th style="min-width: 140px;">Location</th>
               <th style="min-width: 160px;">Owner</th>
-              <th style="min-width: 180px;">Category</th>
-              <th style="min-width: 120px;">Sub Category</th>
-              <th style="min-width: 150px;">Department</th>
+              <th style="min-width: 170px;">Category</th>
+              <th style="min-width: 130px;">Sub Category</th>
+              <th style="min-width: 160px;">Department</th>
+              <th style="min-width: 140px;">Reference Number</th>
+              <th style="min-width: 130px;">Stake Holder</th>
+              <th style="min-width: 120px;">Vendor</th>
+              <th style="min-width: 120px;">Upload Date</th>
+              <th style="min-width: 220px;">Description</th>
             </tr>
           </thead>
           <tbody>
-            ${(InnomickData.recentDocuments || filteredRecent.slice(0, 5)).map(doc => {
+            ${(AppState.homeRecentViewAll ? (InnomickData.recentDocuments || []) : (InnomickData.recentDocuments || []).slice(0, 15)).map(doc => {
               let deptBadgeHtml = '<span style="color: #94a3b8;">-</span>';
               if (doc.department === 'Medical Insurance') {
                 deptBadgeHtml = `<span class="dept-pill-tag medical">${doc.department}</span>`;
@@ -565,27 +603,48 @@ function renderHomeView() {
                       ${doc.isCheckedOut ? `<span title="Checked out by ${doc.checkedOutBy}" class="checked-out-lock"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : ''}
                     </div>
                   </td>
-                  <td style="color: #64748b;">${doc.lastAccessed || doc.uploadDate || '4 minutes ago'}</td>
-                  <td style="color: #64748b;">${doc.location || 'My Department'}</td>
+                  <td style="color: #64748b;">${doc.lastAccessed || doc.uploadDate || '-'}</td>
+                  <td style="color: #64748b;">${doc.location || 'My Organization'}</td>
                   <td>${doc.owner || 'Mohammed Wasifuddin'}</td>
                   <td>${doc.category || '-'}</td>
                   <td style="color: ${doc.subCategory === '-' ? '#94a3b8' : '#334155'};">${doc.subCategory || '-'}</td>
                   <td>${deptBadgeHtml}</td>
+                  <td style="color: ${doc.referenceNumber === '-' ? '#94a3b8' : '#334155'};">${doc.referenceNumber || '-'}</td>
+                  <td style="color: ${doc.stakeHolder === '-' ? '#94a3b8' : '#334155'};">${doc.stakeHolder || '-'}</td>
+                  <td style="color: ${doc.vendor === '-' ? '#94a3b8' : '#334155'};">${doc.vendor || '-'}</td>
+                  <td style="color: #64748b;">${doc.uploadDate || '-'}</td>
+                  <td style="color: ${doc.description === '-' ? '#94a3b8' : '#334155'}; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${doc.description || ''}">${doc.description || '-'}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
+        `}
+      </div>
+      ${(InnomickData.recentDocuments || []).length > 15 ? `
+        <div class="home-table-pagination-bar">
+          <span>Showing ${AppState.homeRecentViewAll ? InnomickData.recentDocuments.length : Math.min(15, InnomickData.recentDocuments.length)} of ${InnomickData.recentDocuments.length} documents</span>
+          <button type="button" class="home-table-toggle-btn" onclick="toggleHomeRecentViewAll(event)">
+            ${AppState.homeRecentViewAll ? 'Show less (15)' : `View all (${InnomickData.recentDocuments.length})`}
+          </button>
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- 4. Approval Workflow (Inbox) Section (8 Columns: Name, Category, Department, Status, Progress, Requested By, Requested on, Group) -->
+    <div class="home-section-title-row">
+      <h2>Approval Workflow (Inbox)</h2>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <a class="home-view-all-link" onclick="toggleHomeInboxViewAll(event)" style="cursor: pointer;">
+          ${AppState.homeInboxViewAll ? 'Show less (15)' : `View all (${InnomickData.approvalsInbox.length})`}
+        </a>
+        <a class="home-view-all-link" onclick="navigateTo('approvals')" title="Go to My Approvals Full Page" style="font-size: 12px; color: #64748b; font-weight: normal; cursor: pointer;">
+          Approvals page &rarr;
+        </a>
       </div>
     </div>
 
-    <!-- 4. Approval Workflow (Inbox) Section (Matching Live SharePoint Screenshot) -->
-    <div class="home-section-title-row">
-      <h2>Approval Workflow (Inbox)</h2>
-      <a class="home-view-all-link" onclick="navigateTo('approvals')">View all</a>
-    </div>
-
-    <div class="home-inbox-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 24px;">
+    <div class="home-inbox-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); overflow: hidden; margin-bottom: 24px; padding: 0;">
       <div style="display: flex; justify-content: flex-end; padding: 8px 14px 4px 14px;">
         <button class="info-circle-btn" title="View details & properties" style="width: 22px; height: 22px; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff; color: #64748b; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;">ⓘ</button>
       </div>
@@ -599,28 +658,36 @@ function renderHomeView() {
           <thead>
             <tr class="header-row">
               <th style="min-width: 260px;">Name</th>
-              <th style="min-width: 180px;">Category</th>
+              <th style="min-width: 170px;">Category</th>
               <th style="min-width: 180px;">Department</th>
               <th style="width: 130px;">Status</th>
               <th style="width: 130px;">Progress</th>
-              <th style="width: 180px;">Requested By</th>
+              <th style="width: 170px;">Requested By</th>
+              <th style="width: 130px;">Requested on</th>
+              <th style="width: 120px;">Group</th>
             </tr>
           </thead>
           <tbody>
-            ${InnomickData.approvalsInbox.map(item => {
+            ${(AppState.homeInboxViewAll ? InnomickData.approvalsInbox : InnomickData.approvalsInbox.slice(0, 15)).map(item => {
               const step = item.progressStep !== undefined ? item.progressStep : 0;
               const total = item.progressTotal !== undefined ? item.progressTotal : 1;
               const percent = total > 0 ? Math.round((step / total) * 100) : 0;
               const deptClass = getDeptPillClass(item.department);
               const reqBy = item.requestedBy || item.submittedBy || 'Mohammed Wasifuddin';
+              const reqOn = item.requestedOn || item.submittedDate || '12 Oct 2026';
+              const grpVal = item.group || (item.workflowType === 'GRP' ? 'Test-GM3' : '-');
               const docName = item.name || item.documentName || 'Document';
+              const fileExt = (docName.split('.').pop() || 'docx').toLowerCase();
 
               return `
                 <tr style="cursor: pointer;" onclick="openApprovalDocDetail('${item.id}', event, 'home')">
                   <td>
-                    <a href="#/approve/${item.id}" onclick="openApprovalDocDetail('${item.id}', event, 'home')" class="sp-inbox-file-name" title="Open approval review: ${docName}">
-                      ${docName}
-                    </a>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                      ${getFileIconSvg(fileExt)}
+                      <a href="#/approve/${item.id}" onclick="openApprovalDocDetail('${item.id}', event, 'home')" class="sp-inbox-file-name" title="Open approval review: ${docName}">
+                        ${docName}
+                      </a>
+                    </div>
                   </td>
                   <td><span style="font-size: 13px; color: #334155;">${item.category || 'Accreditation Documents'}</span></td>
                   <td>
@@ -636,6 +703,8 @@ function renderHomeView() {
                     </div>
                   </td>
                   <td><span style="font-size: 13px; color: #334155;">${reqBy}</span></td>
+                  <td><span style="font-size: 13px; color: #64748b;">${reqOn}</span></td>
+                  <td><span style="font-size: 13px; color: #334155;">${grpVal}</span></td>
                 </tr>
               `;
             }).join('')}
@@ -643,12 +712,27 @@ function renderHomeView() {
         </table>
         `}
       </div>
+      ${InnomickData.approvalsInbox.length > 15 ? `
+        <div class="home-table-pagination-bar">
+          <span>Showing ${AppState.homeInboxViewAll ? InnomickData.approvalsInbox.length : Math.min(15, InnomickData.approvalsInbox.length)} of ${InnomickData.approvalsInbox.length} approval requests</span>
+          <button type="button" class="home-table-toggle-btn" onclick="toggleHomeInboxViewAll(event)">
+            ${AppState.homeInboxViewAll ? 'Show less (15)' : `View all (${InnomickData.approvalsInbox.length})`}
+          </button>
+        </div>
+      ` : ''}
     </div>
 
-    <!-- 5. All Files Section (Matching Live SharePoint Screenshot) -->
+    <!-- 5. All Files Section (13 Columns: Favorite, Name, Last Accessed, Location, Owner, Category, Sub Category, Department, Reference Number, Stake Holder, Vendor, Upload Date, Description) -->
     <div class="home-section-title-row">
       <h2>All Files</h2>
-      <a class="home-view-all-link" onclick="navigateTo('organization')">View all</a>
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <a class="home-view-all-link" onclick="toggleHomeAllFilesViewAll(event)" style="cursor: pointer;">
+          ${AppState.homeAllFilesViewAll ? 'Show less (15)' : `View all (${(InnomickData.homeAllFiles || []).length})`}
+        </a>
+        <a class="home-view-all-link" onclick="navigateTo('organization')" title="Open Organization Documents Page" style="font-size: 12px; color: #64748b; font-weight: normal; cursor: pointer;">
+          Full list &rarr;
+        </a>
+      </div>
     </div>
 
     <div class="home-allfiles-card">
@@ -660,21 +744,22 @@ function renderHomeView() {
           <thead>
             <tr>
               <th style="width: 48px; text-align: center;">Favorite</th>
-              <th style="min-width: 240px;">Name</th>
+              <th style="min-width: 250px;">Name</th>
+              <th style="min-width: 130px;">Last Accessed</th>
               <th style="min-width: 140px;">Location</th>
               <th style="min-width: 160px;">Owner</th>
-              <th style="min-width: 180px;">Category</th>
-              <th style="min-width: 120px;">Sub Category</th>
+              <th style="min-width: 170px;">Category</th>
+              <th style="min-width: 130px;">Sub Category</th>
               <th style="min-width: 160px;">Department</th>
               <th style="min-width: 140px;">Reference Number</th>
-              <th style="min-width: 120px;">Stake Holder</th>
-              <th style="min-width: 110px;">Vendor</th>
+              <th style="min-width: 130px;">Stake Holder</th>
+              <th style="min-width: 120px;">Vendor</th>
               <th style="min-width: 120px;">Upload Date</th>
-              <th style="min-width: 120px;">Description</th>
+              <th style="min-width: 220px;">Description</th>
             </tr>
           </thead>
           <tbody>
-            ${(InnomickData.homeAllFiles || []).map(doc => {
+            ${(AppState.homeAllFilesViewAll ? (InnomickData.homeAllFiles || []) : (InnomickData.homeAllFiles || []).slice(0, 15)).map(doc => {
               let deptBadgeHtml = '<span style="color: #94a3b8;">-</span>';
               if (doc.department === 'Medical Insurance') {
                 deptBadgeHtml = `<span class="dept-pill-tag medical">${doc.department}</span>`;
@@ -699,24 +784,61 @@ function renderHomeView() {
                       <span class="home-file-name-link" onclick="toggleDocumentMenu(event, '${doc.id}')">${doc.name}</span>
                     </div>
                   </td>
-                  <td style="color: #64748b;">${doc.location}</td>
-                  <td>${doc.owner}</td>
-                  <td>${doc.category}</td>
-                  <td style="color: ${doc.subCategory === '-' ? '#94a3b8' : '#334155'};">${doc.subCategory}</td>
+                  <td style="color: #64748b;">${doc.lastAccessed || doc.uploadDate || '-'}</td>
+                  <td style="color: #64748b;">${doc.location || 'My Organization'}</td>
+                  <td>${doc.owner || 'Mohammed Wasifuddin'}</td>
+                  <td>${doc.category || '-'}</td>
+                  <td style="color: ${doc.subCategory === '-' ? '#94a3b8' : '#334155'};">${doc.subCategory || '-'}</td>
                   <td>${deptBadgeHtml}</td>
-                  <td style="color: ${doc.referenceNumber === '-' ? '#94a3b8' : '#334155'};">${doc.referenceNumber}</td>
-                  <td style="color: ${doc.stakeHolder === '-' ? '#94a3b8' : '#334155'};">${doc.stakeHolder}</td>
-                  <td style="color: ${doc.vendor === '-' ? '#94a3b8' : '#334155'};">${doc.vendor}</td>
-                  <td style="color: #64748b;">${doc.uploadDate}</td>
-                  <td style="color: ${doc.description === '-' ? '#94a3b8' : '#334155'};">${doc.description}</td>
+                  <td style="color: ${doc.referenceNumber === '-' ? '#94a3b8' : '#334155'};">${doc.referenceNumber || '-'}</td>
+                  <td style="color: ${doc.stakeHolder === '-' ? '#94a3b8' : '#334155'};">${doc.stakeHolder || '-'}</td>
+                  <td style="color: ${doc.vendor === '-' ? '#94a3b8' : '#334155'};">${doc.vendor || '-'}</td>
+                  <td style="color: #64748b;">${doc.uploadDate || '-'}</td>
+                  <td style="color: ${doc.description === '-' ? '#94a3b8' : '#334155'}; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${doc.description || ''}">${doc.description || '-'}</td>
                 </tr>
               `;
             }).join('')}
           </tbody>
         </table>
       </div>
+      ${(InnomickData.homeAllFiles || []).length > 15 ? `
+        <div class="home-table-pagination-bar">
+          <span>Showing ${AppState.homeAllFilesViewAll ? InnomickData.homeAllFiles.length : Math.min(15, InnomickData.homeAllFiles.length)} of ${InnomickData.homeAllFiles.length} files</span>
+          <button type="button" class="home-table-toggle-btn" onclick="toggleHomeAllFilesViewAll(event)">
+            ${AppState.homeAllFilesViewAll ? 'Show less (15)' : `View all (${InnomickData.homeAllFiles.length})`}
+          </button>
+        </div>
+      ` : ''}
     </div>
   `;
+}
+
+
+function toggleHomeRecentViewAll(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  AppState.homeRecentViewAll = !AppState.homeRecentViewAll;
+  renderCurrentView();
+}
+
+function toggleHomeInboxViewAll(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  AppState.homeInboxViewAll = !AppState.homeInboxViewAll;
+  renderCurrentView();
+}
+
+function toggleHomeAllFilesViewAll(e) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  AppState.homeAllFilesViewAll = !AppState.homeAllFilesViewAll;
+  renderCurrentView();
 }
 
 function toggleHomeFileFavorite(id) {
@@ -944,44 +1066,49 @@ function renderApprovalTabContent(tab) {
           <p style="color: #008272; font-weight: 500; font-size: 15px; margin: 0;">You don't have any data in inbox</p>
         </div>`;
       }
+      const inboxPage = AppState.approvalsInboxPage || 1;
+      const inboxPageSize = AppState.approvalsInboxPageSize || 10;
+      const totalInboxItems = InnomickData.approvalsInbox.length;
+      const totalInboxPages = Math.max(1, Math.ceil(totalInboxItems / inboxPageSize));
+      const startInboxIdx = (inboxPage - 1) * inboxPageSize;
+      const inboxPageItems = InnomickData.approvalsInbox.slice(startInboxIdx, startInboxIdx + inboxPageSize);
+
       return `
         <div class="table-card-container" style="overflow-x: auto;">
           <table class="dms-data-table approvals-table" style="min-width: 100%;">
             <thead>
               <tr class="header-row">
-                <th style="min-width: 250px;">Name</th>
-                <th style="width: 120px; text-align: center;">Workflow Type</th>
+                <th style="min-width: 260px;">Name</th>
                 <th style="min-width: 170px;">Category</th>
                 <th style="min-width: 180px;">Department</th>
                 <th style="width: 130px;">Status</th>
-                <th style="width: 120px;">Progress</th>
-                <th style="width: 160px;">Requested By</th>
-                <th style="width: 120px;">Requested on</th>
-                <th style="width: 100px;">Group</th>
+                <th style="width: 130px;">Progress</th>
+                <th style="width: 170px;">Requested By</th>
+                <th style="width: 130px;">Requested on</th>
+                <th style="width: 120px;">Group</th>
               </tr>
             </thead>
             <tbody>
-              ${InnomickData.approvalsInbox.map(item => {
+              ${inboxPageItems.map(item => {
                 const step = item.progressStep !== undefined ? item.progressStep : 0;
                 const total = item.progressTotal !== undefined ? item.progressTotal : 1;
                 const percent = total > 0 ? Math.round((step / total) * 100) : 0;
-                const wfType = (item.workflowType || (item.group && item.group !== '-' ? 'GRP' : 'IND')).toUpperCase();
-                const badgeClass = wfType === 'GRP' ? 'wf-badge-grp' : 'wf-badge-ind';
                 const deptClass = getDeptPillClass(item.department);
                 const reqBy = item.requestedBy || item.submittedBy || 'Mohammed Wasifuddin';
                 const reqOn = item.requestedOn || item.submittedDate || '22 Oct 2026';
-                const grpVal = item.group || (wfType === 'GRP' ? 'Test-GM3' : '-');
+                const grpVal = item.group || (item.workflowType === 'GRP' ? 'Test-GM3' : '-');
                 const docName = item.name || item.documentName || 'Document';
+                const fileExt = (docName.split('.').pop() || 'docx').toLowerCase();
 
                 return `
                   <tr style="cursor: pointer;" onclick="openApprovalDocDetail('${item.id}', event, 'inbox')">
                     <td>
-                      <a href="#/approve/${item.id}" onclick="openApprovalDocDetail('${item.id}', event, 'inbox')" class="sp-inbox-file-name" title="Open approval review: ${docName}">
-                        ${docName}
-                      </a>
-                    </td>
-                    <td style="text-align: center;">
-                      <span class="${badgeClass}">${wfType}</span>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        ${getFileIconSvg(fileExt)}
+                        <a href="#/approve/${item.id}" onclick="openApprovalDocDetail('${item.id}', event, 'inbox')" class="sp-inbox-file-name" title="Open approval review: ${docName}">
+                          ${docName}
+                        </a>
+                      </div>
                     </td>
                     <td><span style="font-size: 13px; color: #334155;">${item.category || 'Accreditation Documents'}</span></td>
                     <td>
@@ -1005,6 +1132,7 @@ function renderApprovalTabContent(tab) {
             </tbody>
           </table>
         </div>
+        ${renderApprovalPagination('inbox', inboxPage, totalInboxPages, inboxPageSize)}
       `;
     case 'outbox':
       if (!InnomickData.approvalsOutbox || InnomickData.approvalsOutbox.length === 0) {
@@ -1014,6 +1142,13 @@ function renderApprovalTabContent(tab) {
           </div>
         `;
       }
+      const outboxPage = AppState.approvalsOutboxPage || 1;
+      const outboxPageSize = AppState.approvalsOutboxPageSize || 10;
+      const totalOutboxItems = InnomickData.approvalsOutbox.length;
+      const totalOutboxPages = Math.max(1, Math.ceil(totalOutboxItems / outboxPageSize));
+      const startOutboxIdx = (outboxPage - 1) * outboxPageSize;
+      const outboxPageItems = InnomickData.approvalsOutbox.slice(startOutboxIdx, startOutboxIdx + outboxPageSize);
+
       return `
         <div class="table-card-container">
           <table class="dms-data-table approvals-table">
@@ -1028,7 +1163,7 @@ function renderApprovalTabContent(tab) {
               </tr>
             </thead>
             <tbody>
-              ${InnomickData.approvalsOutbox.map(item => {
+              ${outboxPageItems.map(item => {
                 const step = item.progressStep !== undefined ? item.progressStep : 0;
                 const total = item.progressTotal !== undefined ? item.progressTotal : 1;
                 const percent = total > 0 ? Math.round((step / total) * 100) : 0;
@@ -1070,6 +1205,7 @@ function renderApprovalTabContent(tab) {
             </tbody>
           </table>
         </div>
+        ${renderApprovalPagination('outbox', outboxPage, totalOutboxPages, outboxPageSize)}
       `;
     case 'templates':
       const filter = AppState.activeWorkflowTemplateFilter || 'all';
@@ -1110,6 +1246,13 @@ function renderApprovalTabContent(tab) {
         ? (InnomickData.approvalsHistory || []) 
         : (InnomickData.approvalsOutboxHistory && InnomickData.approvalsOutboxHistory.length > 0 ? InnomickData.approvalsOutboxHistory : InnomickData.approvalsHistory);
 
+      const historyPage = AppState.approvalsHistoryPage || 1;
+      const historyPageSize = AppState.approvalsHistoryPageSize || 10;
+      const totalHistoryItems = historyList.length;
+      const totalHistoryPages = Math.max(1, Math.ceil(totalHistoryItems / historyPageSize));
+      const startHistoryIdx = (historyPage - 1) * historyPageSize;
+      const historyPageItems = historyList.slice(startHistoryIdx, startHistoryIdx + historyPageSize);
+
       return `
         <div class="sp-history-subtabs-row" style="display: flex; gap: 24px; margin-bottom: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 0;">
           <button class="sp-history-subtab-btn ${subTab === 'inbox' ? 'active' : ''}" onclick="switchHistorySubTab('inbox')" style="background: none; border: none; border-bottom: ${subTab === 'inbox' ? '2.5px solid #008272' : '2.5px solid transparent'}; color: ${subTab === 'inbox' ? '#008272' : '#64748b'}; font-size: 13.5px; font-weight: ${subTab === 'inbox' ? '600' : '500'}; padding: 8px 4px; cursor: pointer;">Inbox History</button>
@@ -1137,7 +1280,7 @@ function renderApprovalTabContent(tab) {
                 </tr>
               </thead>
               <tbody>
-                ${historyList.map(item => {
+                ${historyPageItems.map(item => {
                   const step = item.progressStep !== undefined ? item.progressStep : 1;
                   const total = item.progressTotal !== undefined ? item.progressTotal : 1;
                   const percent = 100;
@@ -1183,6 +1326,7 @@ function renderApprovalTabContent(tab) {
               </tbody>
             </table>
           </div>
+          ${renderApprovalPagination('history', historyPage, totalHistoryPages, historyPageSize)}
         `}
       `;
   }
@@ -1192,6 +1336,75 @@ function filterWorkflowTemplates(filter) {
   AppState.activeWorkflowTemplateFilter = filter;
   renderCurrentView();
 }
+
+function renderApprovalPagination(tab, currentPage, totalPages, pageSize) {
+  const isFirst = currentPage <= 1;
+  const isLast = currentPage >= totalPages;
+
+  return `
+    <div class="sp-pagination-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 14px 6px; font-size: 13px; color: #475569; border-top: 1px solid #e2e8f0; margin-top: 10px;">
+      <div style="display: flex; align-items: center; gap: 14px;">
+        <button type="button" class="sp-page-btn" onclick="goToApprovalPage('${tab}', 1)" ${isFirst ? 'disabled style="opacity: 0.35; cursor: not-allowed; background: none; border: none; color: #64748b; font-size: 13px; font-weight: 600;"' : 'style="cursor: pointer; background: none; border: none; color: #008272; font-size: 13px; font-weight: 600;"'}>&lt;&lt;</button>
+        <button type="button" class="sp-page-btn" onclick="changeApprovalPage('${tab}', -1)" ${isFirst ? 'disabled style="opacity: 0.35; cursor: not-allowed; background: none; border: none; color: #64748b; font-size: 13px; font-weight: 600;"' : 'style="cursor: pointer; background: none; border: none; color: #008272; font-size: 13px; font-weight: 600;"'}>&lt;</button>
+        <span style="font-size: 12.5px; color: #334155; font-weight: 500;">${currentPage} / ${totalPages} pages</span>
+        <button type="button" class="sp-page-btn" onclick="changeApprovalPage('${tab}', 1)" ${isLast ? 'disabled style="opacity: 0.35; cursor: not-allowed; background: none; border: none; color: #64748b; font-size: 13px; font-weight: 600;"' : 'style="cursor: pointer; background: none; border: none; color: #008272; font-size: 13px; font-weight: 600;"'}>&gt;</button>
+        <button type="button" class="sp-page-btn" onclick="goToApprovalPage('${tab}', ${totalPages})" ${isLast ? 'disabled style="opacity: 0.35; cursor: not-allowed; background: none; border: none; color: #64748b; font-size: 13px; font-weight: 600;"' : 'style="cursor: pointer; background: none; border: none; color: #008272; font-size: 13px; font-weight: 600;"'}>&gt;&gt;</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <select class="sp-items-per-page-select" onchange="setApprovalPageSize('${tab}', this.value)" style="border: 1px solid #008272; border-radius: 4px; padding: 3px 8px; font-size: 12.5px; color: #008272; outline: none; background: #ffffff; cursor: pointer; font-weight: 600;">
+          <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+          <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
+          <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+          <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+        </select>
+        <span style="font-size: 12.5px; color: #64748b;">Items per page</span>
+      </div>
+    </div>
+  `;
+}
+
+function changeApprovalPage(tab, delta) {
+  if (tab === 'inbox') {
+    const totalPages = Math.max(1, Math.ceil(InnomickData.approvalsInbox.length / (AppState.approvalsInboxPageSize || 10)));
+    AppState.approvalsInboxPage = Math.max(1, Math.min(totalPages, (AppState.approvalsInboxPage || 1) + delta));
+  } else if (tab === 'outbox') {
+    const totalPages = Math.max(1, Math.ceil((InnomickData.approvalsOutbox || []).length / (AppState.approvalsOutboxPageSize || 10)));
+    AppState.approvalsOutboxPage = Math.max(1, Math.min(totalPages, (AppState.approvalsOutboxPage || 1) + delta));
+  } else if (tab === 'history') {
+    const list = AppState.activeHistorySubTab === 'inbox' ? (InnomickData.approvalsHistory || []) : (InnomickData.approvalsOutboxHistory || []);
+    const totalPages = Math.max(1, Math.ceil(list.length / (AppState.approvalsHistoryPageSize || 10)));
+    AppState.approvalsHistoryPage = Math.max(1, Math.min(totalPages, (AppState.approvalsHistoryPage || 1) + delta));
+  }
+  renderCurrentView();
+}
+
+function goToApprovalPage(tab, targetPage) {
+  if (tab === 'inbox') {
+    AppState.approvalsInboxPage = targetPage;
+  } else if (tab === 'outbox') {
+    AppState.approvalsOutboxPage = targetPage;
+  } else if (tab === 'history') {
+    AppState.approvalsHistoryPage = targetPage;
+  }
+  renderCurrentView();
+}
+
+function setApprovalPageSize(tab, size) {
+  const sz = parseInt(size, 10) || 10;
+  if (tab === 'inbox') {
+    AppState.approvalsInboxPageSize = sz;
+    AppState.approvalsInboxPage = 1;
+  } else if (tab === 'outbox') {
+    AppState.approvalsOutboxPageSize = sz;
+    AppState.approvalsOutboxPage = 1;
+  } else if (tab === 'history') {
+    AppState.approvalsHistoryPageSize = sz;
+    AppState.approvalsHistoryPage = 1;
+  }
+  renderCurrentView();
+}
+
 
 // =============================================================================
 // APPROVAL DOCUMENT DETAIL VIEW & REMARKS (MATCHING SCREENSHOTS 3 & 4)
@@ -1509,13 +1722,17 @@ function submitApprovalRemarksAction() {
         name: item.name || 'Premier Badminton League.pdf',
         type: (item.name || '').endsWith('.pdf') ? 'pdf' : ((item.name || '').endsWith('.docx') ? 'docx' : 'pdf'),
         uploadDate: '4 minutes ago',
-        lastAccessed: '4 minutes ago',
-        modified: '4 minutes ago',
+        lastAccessed: 'Just now',
+        modified: 'Just now',
         location: item.location || 'My Department',
         owner: item.owner || item.requestedBy || 'Mohammed Wasifuddin',
         category: item.category || 'Accreditation Documents',
         subCategory: item.tagSubCategory || item.subCategory || '-',
         department: item.department || 'Information Technology',
+        referenceNumber: item.referenceNumber && item.referenceNumber !== '-' ? item.referenceNumber : 'APP-2026-01',
+        stakeHolder: item.stakeholder && item.stakeholder !== '-' ? item.stakeholder : 'Management Board',
+        vendor: item.vendor && item.vendor !== '-' ? item.vendor : 'Innomick Technologies Ltd.',
+        description: item.description && item.description !== '-' ? item.description : 'Approved through DMS workflow.',
         favorite: false,
         isCheckedOut: false,
         status: 'Approved'
@@ -1617,7 +1834,7 @@ function filterDocumentsByAllColumns(docsList) {
   return docs;
 }
 
-function render13ColumnsTable(docsList, emptyMsg = 'No documents found.', showRootFolder = false) {
+function render13ColumnsTable(docsList, emptyMsg = 'No documents found.', showRootFolder = false, paginationConfig = null) {
   return `
     <div class="table-card-container">
       <table class="dms-data-table">
@@ -1853,23 +2070,47 @@ function render13ColumnsTable(docsList, emptyMsg = 'No documents found.', showRo
         </tbody>
       </table>
 
-      <div class="table-pagination-footer">
-        <div class="pagination-controls">
-          <button class="pagination-btn" title="First page">&laquo;&laquo;</button>
-          <button class="pagination-btn" title="Previous page">&lt;</button>
-          <span>1 / 1 pages</span>
-          <button class="pagination-btn" title="Next page">&gt;</button>
-          <button class="pagination-btn" title="Last page">&raquo;&raquo;</button>
+      ${paginationConfig ? `
+        <div class="table-pagination-footer">
+          <div class="pagination-controls">
+            <button type="button" class="pagination-btn" title="First page" onclick="${paginationConfig.onPageGo || 'goToFavoritesPage'}(1)" ${paginationConfig.currentPage <= 1 ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : 'style="cursor: pointer;"'}>&laquo;&laquo;</button>
+            <button type="button" class="pagination-btn" title="Previous page" onclick="${paginationConfig.onPageChange || 'changeFavoritesPage'}(-1)" ${paginationConfig.currentPage <= 1 ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : 'style="cursor: pointer;"'}>&lt;</button>
+            <span>${paginationConfig.currentPage} / ${paginationConfig.totalPages} pages</span>
+            <button type="button" class="pagination-btn" title="Next page" onclick="${paginationConfig.onPageChange || 'changeFavoritesPage'}(1)" ${paginationConfig.currentPage >= paginationConfig.totalPages ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : 'style="cursor: pointer;"'}>&gt;</button>
+            <button type="button" class="pagination-btn" title="Last page" onclick="${paginationConfig.onPageGo || 'goToFavoritesPage'}(${paginationConfig.totalPages})" ${paginationConfig.currentPage >= paginationConfig.totalPages ? 'disabled style="opacity: 0.35; cursor: not-allowed;"' : 'style="cursor: pointer;"'}>&raquo;&raquo;</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 14px;">
+            <span style="font-size: 12.5px; color: #64748b;">${paginationConfig.totalItems} items</span>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <select class="pagination-select" onchange="${paginationConfig.onPageSize || 'setFavoritesPageSize'}(this.value)">
+                <option value="10" ${paginationConfig.pageSize === 10 ? 'selected' : ''}>10</option>
+                <option value="20" ${paginationConfig.pageSize === 20 ? 'selected' : ''}>20</option>
+                <option value="50" ${paginationConfig.pageSize === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${paginationConfig.pageSize === 100 ? 'selected' : ''}>100</option>
+              </select>
+              <span>Items per page</span>
+            </div>
+          </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <select class="pagination-select">
-            <option>10</option>
-            <option>20</option>
-            <option>50</option>
-          </select>
-          <span>Items per page</span>
+      ` : `
+        <div class="table-pagination-footer">
+          <div class="pagination-controls">
+            <button class="pagination-btn" title="First page">&laquo;&laquo;</button>
+            <button class="pagination-btn" title="Previous page">&lt;</button>
+            <span>1 / 1 pages</span>
+            <button class="pagination-btn" title="Next page">&gt;</button>
+            <button class="pagination-btn" title="Last page">&raquo;&raquo;</button>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select class="pagination-select">
+              <option>10</option>
+              <option>20</option>
+              <option>50</option>
+            </select>
+            <span>Items per page</span>
+          </div>
         </div>
-      </div>
+      `}
     </div>
   `;
 }
@@ -1877,9 +2118,60 @@ function render13ColumnsTable(docsList, emptyMsg = 'No documents found.', showRo
 // =============================================================================
 // 3. MY FAVORITES VIEW (13 Columns Matching SharePoint)
 // =============================================================================
+function getAllFavoriteDocuments() {
+  const seenIds = new Set();
+  const favs = [];
+
+  const addIfFav = (d) => {
+    if (d && d.favorite && !d.isFolder && !seenIds.has(String(d.id))) {
+      seenIds.add(String(d.id));
+      favs.push(d);
+    }
+  };
+
+  // 1. Department documents (Hospital Director Office, IT, etc.)
+  if (InnomickData.departmentSites) {
+    for (const b in InnomickData.departmentSites) {
+      for (const d in InnomickData.departmentSites[b]) {
+        (InnomickData.departmentSites[b][d] || []).forEach(addIfFav);
+      }
+    }
+  }
+
+  // 2. Main documents collection
+  (InnomickData.documents || []).forEach(addIfFav);
+
+  // 3. Other collections
+  (InnomickData.recentDocuments || []).forEach(addIfFav);
+  (InnomickData.homeAllFiles || []).forEach(addIfFav);
+  (InnomickData.allFiles || []).forEach(addIfFav);
+  (InnomickData.myFiles || []).forEach(addIfFav);
+  (InnomickData.sharedFiles || []).forEach(addIfFav);
+  (InnomickData.expiringFiles || []).forEach(addIfFav);
+
+  return favs;
+}
+
 function renderMyFavoritesView() {
-  const favorites = InnomickData.documents.filter(d => d.favorite);
+  const favorites = getAllFavoriteDocuments();
   const filtered = filterDocumentsByAllColumns(favorites);
+
+  const pageSize = AppState.favoritesPageSize || 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  if (AppState.favoritesPage > totalPages) AppState.favoritesPage = totalPages;
+  const currentPage = AppState.favoritesPage || 1;
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedDocs = filtered.slice(startIndex, startIndex + pageSize);
+
+  const paginationConfig = {
+    currentPage,
+    totalPages,
+    pageSize,
+    totalItems: filtered.length,
+    onPageChange: 'changeFavoritesPage',
+    onPageGo: 'goToFavoritesPage',
+    onPageSize: 'setFavoritesPageSize'
+  };
 
   return `
     <div class="content-header-row">
@@ -1894,8 +2186,32 @@ function renderMyFavoritesView() {
       </button>
     </div>
 
-    ${render13ColumnsTable(filtered, 'No favorite documents found.')}
+    <div class="view-breadcrumbs" style="margin-bottom: 10px;">
+      <a onclick="navigateTo('home')" style="color: #008272; font-weight: 500; cursor: pointer;">Home</a> &gt; <span style="color: var(--gray-700); font-weight: 600;">My Favorites</span>
+    </div>
+
+    ${render13ColumnsTable(paginatedDocs, 'No favorite documents found.', false, paginationConfig)}
   `;
+}
+
+function changeFavoritesPage(delta) {
+  const favorites = getAllFavoriteDocuments();
+  const filtered = filterDocumentsByAllColumns(favorites);
+  const pageSize = AppState.favoritesPageSize || 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  AppState.favoritesPage = Math.max(1, Math.min(totalPages, (AppState.favoritesPage || 1) + delta));
+  renderCurrentView();
+}
+
+function goToFavoritesPage(targetPage) {
+  AppState.favoritesPage = targetPage;
+  renderCurrentView();
+}
+
+function setFavoritesPageSize(size) {
+  AppState.favoritesPageSize = parseInt(size, 10) || 10;
+  AppState.favoritesPage = 1;
+  renderCurrentView();
 }
 
 // =============================================================================
@@ -2219,21 +2535,53 @@ function renderDepartmentView() {
   let branch = AppState.activeBranch || 'Innomick Al-Assima Hospital';
   let dept = AppState.activeDepartment || 'Information Technology';
   
+  const displayBranch = branch;
+  let canonicalBranch = branch;
   if (branch.includes('Ahmadi')) {
-    branch = 'Innomick Al-Ahmadi Hospital';
+    canonicalBranch = 'Innomick Al-Ahmadi Hospital';
   } else if (branch.includes('Assima')) {
-    branch = 'Innomick Al-Assima Hospital';
+    canonicalBranch = 'Innomick Al-Assima Hospital';
   }
 
-  const isAhmadi = branch.includes('Ahmadi') || dept === 'Hospital Director Office';
+  const isAhmadi = canonicalBranch.includes('Ahmadi') || dept === 'Hospital Director Office';
+  const isITDept = !isAhmadi && (dept.toLowerCase().includes('information') || dept.toLowerCase().includes('it') || dept.toLowerCase().includes('technology'));
 
   let docsList = [];
-  if (InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) {
+  if (InnomickData.departmentSites && InnomickData.departmentSites[canonicalBranch] && InnomickData.departmentSites[canonicalBranch][dept]) {
+    docsList = [...InnomickData.departmentSites[canonicalBranch][dept]];
+  } else if (InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) {
     docsList = [...InnomickData.departmentSites[branch][dept]];
   } else {
     const key = isAhmadi ? 'Innomick Al-Ahmadi Hospital' : 'Innomick Al-Assima Hospital';
     const deptKey = isAhmadi ? 'Hospital Director Office' : 'Information Technology';
     docsList = [...((InnomickData.departmentSites && InnomickData.departmentSites[key] && InnomickData.departmentSites[key][deptKey]) || [])];
+  }
+
+  // Ensure documents uploaded to folders have their parentFolder set
+  docsList.forEach(d => {
+    if (d.folder && d.folder !== '-' && !d.parentFolder) {
+      d.parentFolder = d.folder;
+    }
+    if (d.location && d.location.includes('>') && !d.parentFolder && !d.isFolder) {
+      const parts = d.location.split('>').map(s => s.trim());
+      const lastPart = parts[parts.length - 1];
+      if (lastPart && lastPart !== d.department) {
+        d.parentFolder = lastPart;
+      }
+    }
+  });
+
+  // Folder filtering based on AppState.activeDeptFolder
+  const currentFolder = AppState.activeDeptFolder;
+  if (!currentFolder) {
+    // Root level (Home): show root folders and root files (where !parentFolder)
+    docsList = docsList.filter(d => !d.parentFolder || d.parentFolder === 'root');
+  } else if (currentFolder === 'Direct Uploads') {
+    // Inside Direct Uploads: show subfolders and files inside Direct Uploads
+    docsList = docsList.filter(d => d.parentFolder === 'Direct Uploads');
+  } else {
+    // Inside a specific folder (e.g. 'Testing', 'Office Files', 'CIO Office', 'test', 'Test')
+    docsList = docsList.filter(d => d.parentFolder === currentFolder || d.folder === currentFolder || (d.parentFolder && d.parentFolder.endsWith('/' + currentFolder)));
   }
 
   // Column specific filters
@@ -2263,7 +2611,7 @@ function renderDepartmentView() {
     });
   }
 
-  // Column sorting
+  // Column sorting (keep folders first)
   if (AppState.deptSortKey) {
     const sortKey = AppState.deptSortKey;
     const isAsc = AppState.deptSortAsc !== false;
@@ -2276,6 +2624,13 @@ function renderDepartmentView() {
       if (valA === '—') return 1;
       if (valB === '—') return -1;
       return isAsc ? valA.localeCompare(valB, undefined, { numeric: true }) : valB.localeCompare(valA, undefined, { numeric: true });
+    });
+  } else {
+    // Default sort: folders first
+    docsList.sort((a, b) => {
+      if (a.isFolder && !b.isFolder) return -1;
+      if (!a.isFolder && b.isFolder) return 1;
+      return 0;
     });
   }
 
@@ -2290,7 +2645,7 @@ function renderDepartmentView() {
           </svg>
           Upload
         </button>
-        <button class="btn-direct-upload" onclick="triggerDeviceUpload(event, 'my-department')" style="display: inline-flex; align-items: center; gap: 6px;">
+        <button class="btn-direct-upload" onclick="triggerDirectUpload(event, 'my-department')" style="display: inline-flex; align-items: center; gap: 6px;">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
             <polyline points="14 2 14 8 20 8"/>
@@ -2303,12 +2658,20 @@ function renderDepartmentView() {
     </div>
 
     <div style="font-size: 13.5px; font-weight: 500; color: #1e293b; margin-bottom: 6px;">
-      ${branch} - ${dept}
+      ${displayBranch} - ${dept}
     </div>
 
     <div class="view-breadcrumbs" style="margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
-      <div>
-        <a onclick="navigateTo('home')" style="color: #008272; font-weight: 600; cursor: pointer; text-decoration: none;">Home</a>
+      <div style="font-size: 13.5px;">
+        ${!AppState.activeDeptFolder ? `
+          <span style="color: #008272; font-weight: 600;">Home</span>
+        ` : AppState.activeDeptFolder === 'Direct Uploads' ? `
+          <a onclick="navigateToDeptFolder(null)" style="color: #008272; font-weight: 600; cursor: pointer; text-decoration: none;">Home</a> &gt; <span style="color: #1e293b; font-weight: 600;">Direct Uploads</span>
+        ` : (AppState.activeDeptFolder === 'Testing' || AppState.activeDeptFolder === 'Office Files' || AppState.activeDeptFolder === 'CIO Office' || AppState.activeDeptFolder === 'test') ? `
+          <a onclick="navigateToDeptFolder(null)" style="color: #008272; font-weight: 600; cursor: pointer; text-decoration: none;">Home</a> &gt; <a onclick="navigateToDeptFolder('Direct Uploads')" style="color: #008272; font-weight: 600; cursor: pointer; text-decoration: none;">Direct Uploads</a> &gt; <span style="color: #1e293b; font-weight: 600;">${AppState.activeDeptFolder}</span>
+        ` : `
+          <a onclick="navigateToDeptFolder(null)" style="color: #008272; font-weight: 600; cursor: pointer; text-decoration: none;">Home</a> &gt; <span style="color: #1e293b; font-weight: 600;">${AppState.activeDeptFolder}</span>
+        `}
       </div>
 
       <div style="display: flex; align-items: center; gap: 8px;">
@@ -2379,10 +2742,17 @@ function renderDepartmentView() {
           </tr>
         </thead>
         <tbody>
-          ${docsList.map(item => {
+          ${docsList.length === 0 ? `
+            <tr>
+              <td colspan="${SP_DEPARTMENT_COLUMNS.length + 1}" style="text-align: center; padding: 50px 20px; color: #64748b;">
+                <div style="font-size: 14px; font-weight: 500; color: #475569;">This folder is empty.</div>
+                <div style="font-size: 12.5px; color: #94a3b8; margin-top: 4px;">Use "Direct Upload" above to upload files into this folder.</div>
+              </td>
+            </tr>
+          ` : docsList.map(item => {
             if (item.isFolder) {
               return `
-                <tr class="table-folder-row" style="cursor: pointer;" onclick="showToast('Opening ${item.name} folder...', 'info')">
+                <tr class="table-folder-row" style="cursor: pointer;" onclick="navigateToDeptFolder('${item.name}')">
                   <td style="text-align: center; width: 36px;"></td>
                   <td>
                     <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -2390,7 +2760,7 @@ function renderDepartmentView() {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="#eab308" stroke="none">
                           <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
                         </svg>
-                        <span style="font-weight: 500; color: #1e293b;">${item.name}</span>
+                        <span class="dept-folder-link" onclick="navigateToDeptFolder('${item.name}')" style="font-weight: 500; color: #1e293b; cursor: pointer;">${item.name}</span>
                       </div>
                       <span style="color: #94a3b8; font-size: 13px;">...</span>
                     </div>
@@ -2417,7 +2787,7 @@ function renderDepartmentView() {
                             <span class="file-link" onclick="toggleDocumentMenu(event, '${item.id}')" title="${item.name}">${item.name}</span>
                           </div>
                           <div class="row-actions-group" style="display: flex; align-items: center; gap: 4px; position: relative;">
-                            <button class="row-action-btn" title="More Actions" onclick="toggleRowContextMenu(event, '${item.id}')">
+                            <button class="row-action-btn" id="row_more_actions_${item.id}" title="More Actions" onclick="toggleRowContextMenu(event, '${item.id}')">
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                                 <circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="12" r="2"/>
                               </svg>
@@ -2430,24 +2800,60 @@ function renderDepartmentView() {
                               </svg>
                             </button>
                             ${AppState.openContextMenuDocId === item.id ? `
-                              <div class="row-context-menu" onclick="event.stopPropagation()">
-                                <button class="context-menu-item" onclick="openVersionHistoryModal('${item.id}')">
+                              <div class="row-context-menu" id="context_menu_${item.id}" onclick="event.stopPropagation()">
+                                <button class="context-menu-item" id="btn_menu_version_${item.id}" onclick="openVersionHistoryModal('${item.id}')">
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                                    <path d="M3 3v5h5"/>
+                                    <path d="M12 7v5l4 2"/>
                                   </svg>
                                   <span>Version History</span>
                                 </button>
-                                <button class="context-menu-item" onclick="openManageAccessModal('${item.id}')">
+                                <button class="context-menu-item" id="btn_menu_checkout_${item.id}" onclick="toggleCheckOut('${item.id}')">
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 2l-2 2m-1.5 1.5L16 7l-2-2m-4 4l-4 4a5 5 0 1 0 7.07 7.07l4-4a5 5 0 0 0-7.07-7.07z"/>
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                  </svg>
+                                  <span>${item.isCheckedOut ? 'Check In' : 'Check Out'}</span>
+                                </button>
+                                <button class="context-menu-item" id="btn_menu_manage_${item.id}" onclick="openManageAccessModal('${item.id}')">
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="7.5" cy="15.5" r="5.5"/>
+                                    <path d="m21 2-9.6 9.6"/>
+                                    <path d="m15.5 7.5 3 3L22 7l-3-3"/>
                                   </svg>
                                   <span>Manage Access</span>
                                 </button>
-                                <button class="context-menu-item" onclick="downloadDocument('${item.id}')">
+                                <button class="context-menu-item" id="btn_menu_download_${item.id}" onclick="downloadDocument('${item.id}')">
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
                                   </svg>
                                   <span>Download</span>
+                                </button>
+                                <button class="context-menu-item" id="btn_menu_favorite_${item.id}" onclick="toggleFavorite('${item.id}')">
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="${item.favorite ? '#008272' : 'none'}" stroke="${item.favorite ? '#008272' : 'currentColor'}" stroke-width="2">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                  </svg>
+                                  <span>${item.favorite ? 'Remove Favourite' : 'Add Favourite'}</span>
+                                </button>
+                                ${isITDept ? `
+                                <button class="context-menu-item" id="btn_menu_publish_${item.id}" onclick="publishDocument('${item.id}')">
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                  </svg>
+                                  <span>Publish</span>
+                                </button>
+                                ` : ''}
+                                <button class="context-menu-item danger" id="btn_menu_delete_${item.id}" onclick="deleteDocumentToRecycle('${item.id}')">
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                  </svg>
+                                  <span>Delete</span>
                                 </button>
                               </div>
                             ` : ''}
@@ -2543,6 +2949,21 @@ function toggleDepartmentColumnFilter(colKey, event) {
   }, 50);
 }
 
+function navigateToDeptFolder(folderName) {
+  AppState.activeDeptFolder = folderName || null;
+  const branch = AppState.activeBranch || 'Innomick Al-Ahmadi Hospital';
+  const dept = AppState.activeDepartment || 'Hospital Director Office';
+  const b64Branch = btoa(branch);
+  const b64Dept = btoa(dept);
+  if (folderName) {
+    const b64Folder = btoa(folderName);
+    window.location.hash = `#/department?branch=${b64Branch}&dept=${b64Dept}&folder=${b64Folder}`;
+  } else {
+    window.location.hash = `#/department?branch=${b64Branch}&dept=${b64Dept}`;
+  }
+  renderCurrentView();
+}
+
 function handleDepartmentColumnFilterInput(colKey, value) {
   if (!AppState.deptColFilters) AppState.deptColFilters = {};
   if (value && value.trim()) {
@@ -2555,26 +2976,7 @@ function handleDepartmentColumnFilterInput(colKey, value) {
 
 function toggleDeptItemFavorite(docId, event) {
   if (event) event.stopPropagation();
-  const branch = AppState.activeBranch || 'Innomick Al-Assima Hospital';
-  const dept = AppState.activeDepartment || 'Information Technology';
-  let targetDoc = null;
-  if (InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) {
-    targetDoc = InnomickData.departmentSites[branch][dept].find(d => d.id === docId);
-  }
-  if (!targetDoc) {
-    for (const b in InnomickData.departmentSites) {
-      for (const d in InnomickData.departmentSites[b]) {
-        const found = InnomickData.departmentSites[b][d].find(x => x.id === docId);
-        if (found) { targetDoc = found; break; }
-      }
-      if (targetDoc) break;
-    }
-  }
-  if (targetDoc) {
-    targetDoc.favorite = !targetDoc.favorite;
-    showToast(targetDoc.favorite ? 'Added to Favorites' : 'Removed from Favorites', 'success');
-    renderCurrentView();
-  }
+  toggleFavorite(docId);
 }
 
 function escapeHtmlDept(text) {
@@ -2777,6 +3179,28 @@ function deleteDocumentToRecycle(docId) {
     if (idxRec !== -1) InnomickData.recentDocuments.splice(idxRec, 1);
   }
 
+  // Also remove from allFiles if present
+  if (InnomickData.allFiles) {
+    const idxAll = InnomickData.allFiles.findIndex(d => d.id === docId);
+    if (idxAll !== -1) {
+      if (!doc) doc = InnomickData.allFiles[idxAll];
+      InnomickData.allFiles.splice(idxAll, 1);
+    }
+  }
+
+  // Also remove from departmentSites if present
+  if (InnomickData.departmentSites) {
+    for (const b in InnomickData.departmentSites) {
+      for (const d in InnomickData.departmentSites[b]) {
+        const idxDept = InnomickData.departmentSites[b][d].findIndex(x => x.id === docId);
+        if (idxDept !== -1) {
+          if (!doc) doc = InnomickData.departmentSites[b][d][idxDept];
+          InnomickData.departmentSites[b][d].splice(idxDept, 1);
+        }
+      }
+    }
+  }
+
   // Fallback to findAnyDoc or synthetic doc
   if (!doc) {
     doc = findAnyDoc(docId) || { id: docId, name: 'Document', type: 'pdf', department: 'General' };
@@ -2794,6 +3218,15 @@ function deleteDocumentToRecycle(docId) {
   AppState.openContextMenuDocId = null;
   closeContextMenu();
   showToast(`"${doc.name}" moved to Recycle Bin.`);
+  renderCurrentView();
+}
+
+function publishDocument(docId) {
+  closeContextMenu();
+  const doc = findAnyDoc(docId);
+  if (!doc) return;
+  doc.status = 'Published';
+  showToast(`Document "${doc.name}" published successfully to Enterprise Portal.`, 'success');
   renderCurrentView();
 }
 
@@ -4243,12 +4676,34 @@ function deletePermanentlySelectedRecycleItems() {
 // =============================================================================
 function toggleFavorite(id) {
   const doc = findAnyDoc(id);
-  if (doc) {
-    doc.favorite = !doc.favorite;
-    closeContextMenu();
-    showToast(`${doc.favorite ? 'Added to' : 'Removed from'} Favorites: ${doc.name}`);
-    renderCurrentView();
+  if (!doc) return;
+  const newFavStatus = !doc.favorite;
+  doc.favorite = newFavStatus;
+
+  // Synchronize across all collections
+  const syncDocFav = (item) => {
+    if (item && String(item.id) === String(id)) item.favorite = newFavStatus;
+  };
+
+  (InnomickData.documents || []).forEach(syncDocFav);
+  (InnomickData.recentDocuments || []).forEach(syncDocFav);
+  (InnomickData.homeAllFiles || []).forEach(syncDocFav);
+  (InnomickData.allFiles || []).forEach(syncDocFav);
+  (InnomickData.myFiles || []).forEach(syncDocFav);
+  (InnomickData.sharedFiles || []).forEach(syncDocFav);
+  (InnomickData.expiringFiles || []).forEach(syncDocFav);
+
+  if (InnomickData.departmentSites) {
+    for (const b in InnomickData.departmentSites) {
+      for (const d in InnomickData.departmentSites[b]) {
+        (InnomickData.departmentSites[b][d] || []).forEach(syncDocFav);
+      }
+    }
   }
+
+  closeContextMenu();
+  showToast(`${newFavStatus ? 'Added to' : 'Removed from'} Favorites: ${doc.name}`);
+  renderCurrentView();
 }
 
 function toggleMyFileFavorite(id) {
@@ -4285,6 +4740,23 @@ function refreshData() {
 AppState.currentUploadSource = 'my-department';
 AppState.pendingUploadData = null;
 AppState.selectedUploadWorkflowType = 'individual';
+AppState.isDirectUploadMode = false;
+AppState.directUploadSelectedFolder = null;
+AppState.directUploadTempFolder = null;
+AppState.directUploadFilterQuery = '';
+
+// Trigger Direct Upload Flow
+function triggerDirectUpload(event, sourceContext) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  AppState.isDirectUploadMode = true;
+  AppState.directUploadSelectedFolder = (AppState.activeDeptFolder && AppState.activeDeptFolder !== 'Direct Uploads') ? AppState.activeDeptFolder : null;
+  AppState.directUploadTempFolder = AppState.directUploadSelectedFolder;
+  AppState.directUploadFilterQuery = '';
+  triggerDeviceUpload(event, sourceContext || 'my-department');
+}
 
 // Global trigger for local device file upload
 function triggerDeviceUpload(event, sourceContext, defaultCategory) {
@@ -4347,19 +4819,32 @@ function openUploadModal(defaultCategory, sourceContext) {
     else AppState.currentUploadSource = 'my-department';
   }
 
-  // Reset to Step 1
+  // Update workflow footer buttons based on source
+  updateStep2WorkflowFooter();
+
+  // Reset all containers
   const step1Form = document.getElementById('uploadStep1Form');
   const step2Cont = document.getElementById('uploadStep2Container');
+  const dirFolderCont = document.getElementById('uploadDirectFolderContainer');
+  const dirConfirmCont = document.getElementById('uploadDirectConfirmContainer');
   const mainTitle = document.getElementById('uploadModalMainTitle');
   const subTitle = document.getElementById('uploadModalSubTitle');
   const backBtn = document.getElementById('uploadModalBackBtn');
   const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
+  
   if (step1Form) step1Form.style.display = 'block';
   if (step2Cont) step2Cont.style.display = 'none';
-  if (mainTitle) mainTitle.innerText = 'Upload Document';
+  if (dirFolderCont) dirFolderCont.style.display = 'none';
+  if (dirConfirmCont) dirConfirmCont.style.display = 'none';
   if (subTitle) subTitle.style.display = 'none';
   if (backBtn) backBtn.style.display = 'none';
   if (dialog) dialog.style.maxWidth = '620px';
+
+  if (AppState.isDirectUploadMode) {
+    if (mainTitle) mainTitle.innerText = 'Quick Document Upload';
+  } else {
+    if (mainTitle) mainTitle.innerText = 'Upload Document';
+  }
 
   // Populate Categories
   const catSelect = document.getElementById('uploadCategorySelect');
@@ -4376,8 +4861,8 @@ function openUploadModal(defaultCategory, sourceContext) {
   const ownerEl = document.getElementById('uploadOwnerName');
   const deptEl = document.getElementById('uploadDeptBadge');
   const dateEl = document.getElementById('uploadDateDisplay');
-  if (ownerEl) ownerEl.innerText = InnomickData.currentUser.name || 'Intranet';
-  if (deptEl) deptEl.innerText = 'Information Technology';
+  if (ownerEl) ownerEl.innerText = InnomickData.currentUser.name || 'Mohammed Wasifuddin';
+  if (deptEl) deptEl.innerText = AppState.activeDepartment || 'Hospital Director Office';
   if (dateEl) {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -4390,6 +4875,10 @@ function openUploadModal(defaultCategory, sourceContext) {
 function closeUploadModal() {
   const modal = document.getElementById('uploadModal');
   if (modal) modal.classList.remove('active');
+  closeDirectUploadFolderDrawer();
+  AppState.isDirectUploadMode = false;
+  AppState.directUploadSelectedFolder = null;
+  AppState.directUploadTempFolder = null;
   backToUploadStep1();
 }
 
@@ -4593,32 +5082,33 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Review Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_reviewDate" value="2026-10-16">
+          <input type="date" class="sp-form-input" id="dyn_reviewDate" value="2026-10-23">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Audit/Inspection Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_auditInspectionDate" value="2026-10-16">
+          <input type="date" class="sp-form-input" id="dyn_auditInspectionDate" value="2026-10-23">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Inspection Area <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_inspectionArea" value="Enterprise Clinical IT & Cloud Infrastructure" placeholder="Enter Inspection Area">
+          <input type="text" class="sp-form-input" id="dyn_inspectionArea" value="ok" placeholder="Enter Inspection Area">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Findings Summary <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_findingsSummary" value="Compliant with JCI & ISO 27001 healthcare electronic documentation standards" placeholder="Enter Findings Summary">
+          <input type="text" class="sp-form-input" id="dyn_findingsSummary" value="ok" placeholder="Enter Findings Summary">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Action Status <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_actionStatus">
-            <option value="Compliant / Cleared" selected>Compliant / Cleared</option>
+            <option value="Not Started" selected>Not Started</option>
+            <option value="Compliant / Cleared">Compliant / Cleared</option>
             <option value="Pending Review">Pending Review</option>
             <option value="Follow-up Action Required">Follow-up Action Required</option>
             <option value="Major Non-Conformance">Major Non-Conformance</option>
@@ -4727,13 +5217,22 @@ function handleUploadStep1Next(event) {
     sharedWith: []
   };
 
+  // If in Direct Upload mode, branch directly to Folder Selection (Step 2)
+  if (AppState.isDirectUploadMode) {
+    showDirectUploadStep2FolderSelect();
+    return;
+  }
+
   // Switch modal view to Step 2 (< Select Workflow)
   document.getElementById('uploadStep1Form').style.display = 'none';
   document.getElementById('uploadStep2Container').style.display = 'block';
+  updateStep2WorkflowFooter();
   if (document.getElementById('uploadStep3IndividualContainer')) document.getElementById('uploadStep3IndividualContainer').style.display = 'none';
   if (document.getElementById('uploadStep3GroupContainer')) document.getElementById('uploadStep3GroupContainer').style.display = 'none';
   if (document.getElementById('uploadViewWorkflowContainer')) document.getElementById('uploadViewWorkflowContainer').style.display = 'none';
   if (document.getElementById('uploadStep4WorkflowFormContainer')) document.getElementById('uploadStep4WorkflowFormContainer').style.display = 'none';
+  if (document.getElementById('uploadDirectFolderContainer')) document.getElementById('uploadDirectFolderContainer').style.display = 'none';
+  if (document.getElementById('uploadDirectConfirmContainer')) document.getElementById('uploadDirectConfirmContainer').style.display = 'none';
 
   const backBtn = document.getElementById('uploadModalBackBtn');
   if (backBtn) backBtn.style.display = 'none';
@@ -4745,15 +5244,40 @@ function handleUploadStep1Next(event) {
   if (dialog) dialog.style.maxWidth = '520px';
 }
 
+function updateStep2WorkflowFooter() {
+  const isMyFiles = (AppState.currentUploadSource === 'my-files') || 
+                    (AppState.currentRoute === 'my-files' && AppState.currentUploadSource !== 'my-department' && AppState.currentUploadSource !== 'my-organization');
+  const skipBtn = document.getElementById('btnSkipApproval');
+  if (skipBtn) {
+    skipBtn.style.display = isMyFiles ? 'inline-block' : 'none';
+  }
+}
+
 // Unified Modal Back Click Router
 function handleUploadModalBackClick() {
+  const directConfirm = document.getElementById('uploadDirectConfirmContainer');
+  const directFolder = document.getElementById('uploadDirectFolderContainer');
   const viewWf = document.getElementById('uploadViewWorkflowContainer');
   const step4 = document.getElementById('uploadStep4WorkflowFormContainer');
   const step3Ind = document.getElementById('uploadStep3IndividualContainer');
   const step3Grp = document.getElementById('uploadStep3GroupContainer');
   const step2 = document.getElementById('uploadStep2Container');
 
-  if (viewWf && viewWf.style.display !== 'none') {
+  if (directConfirm && directConfirm.style.display !== 'none') {
+    directConfirm.style.display = 'none';
+    if (directFolder) directFolder.style.display = 'block';
+    const mainTitle = document.getElementById('uploadModalMainTitle');
+    if (mainTitle) mainTitle.innerText = '< Select Folder';
+    const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
+    if (dialog) dialog.style.maxWidth = '520px';
+  } else if (directFolder && directFolder.style.display !== 'none') {
+    directFolder.style.display = 'none';
+    document.getElementById('uploadStep1Form').style.display = 'block';
+    const mainTitle = document.getElementById('uploadModalMainTitle');
+    if (mainTitle) mainTitle.innerText = 'Quick Document Upload';
+    const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
+    if (dialog) dialog.style.maxWidth = '620px';
+  } else if (viewWf && viewWf.style.display !== 'none') {
     backFromViewWorkflow();
   } else if (step4 && step4.style.display !== 'none') {
     backToWorkflowStep3();
@@ -4771,16 +5295,330 @@ function backToUploadStep1() {
   if (document.getElementById('uploadStep3GroupContainer')) document.getElementById('uploadStep3GroupContainer').style.display = 'none';
   if (document.getElementById('uploadViewWorkflowContainer')) document.getElementById('uploadViewWorkflowContainer').style.display = 'none';
   if (document.getElementById('uploadStep4WorkflowFormContainer')) document.getElementById('uploadStep4WorkflowFormContainer').style.display = 'none';
+  if (document.getElementById('uploadDirectFolderContainer')) document.getElementById('uploadDirectFolderContainer').style.display = 'none';
+  if (document.getElementById('uploadDirectConfirmContainer')) document.getElementById('uploadDirectConfirmContainer').style.display = 'none';
 
   const backBtn = document.getElementById('uploadModalBackBtn');
   if (backBtn) backBtn.style.display = 'none';
 
   const mainTitle = document.getElementById('uploadModalMainTitle');
-  if (mainTitle) mainTitle.innerText = 'Upload Document';
+  if (mainTitle) {
+    mainTitle.innerText = AppState.isDirectUploadMode ? 'Quick Document Upload' : 'Upload Document';
+  }
 
   const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
   if (dialog) dialog.style.maxWidth = '620px';
 }
+
+// =============================================================================
+// DIRECT UPLOAD MULTI-STEP FLOW CONTROLLERS
+// =============================================================================
+const DIRECT_UPLOAD_FOLDER_MAP = {
+  "Hospital Director Office": ["Testing", "Office Files", "Test", "Direct Uploads"],
+  "Information Technology": ["test", "CIO Office", "Direct Uploads"]
+};
+
+function showDirectUploadStep2FolderSelect() {
+  document.getElementById('uploadStep1Form').style.display = 'none';
+  if (document.getElementById('uploadStep2Container')) document.getElementById('uploadStep2Container').style.display = 'none';
+  if (document.getElementById('uploadStep3IndividualContainer')) document.getElementById('uploadStep3IndividualContainer').style.display = 'none';
+  if (document.getElementById('uploadStep3GroupContainer')) document.getElementById('uploadStep3GroupContainer').style.display = 'none';
+  if (document.getElementById('uploadViewWorkflowContainer')) document.getElementById('uploadViewWorkflowContainer').style.display = 'none';
+  if (document.getElementById('uploadStep4WorkflowFormContainer')) document.getElementById('uploadStep4WorkflowFormContainer').style.display = 'none';
+  if (document.getElementById('uploadDirectConfirmContainer')) document.getElementById('uploadDirectConfirmContainer').style.display = 'none';
+
+  const folderCont = document.getElementById('uploadDirectFolderContainer');
+  if (folderCont) folderCont.style.display = 'block';
+
+  const mainTitle = document.getElementById('uploadModalMainTitle');
+  if (mainTitle) mainTitle.innerText = '< Select Folder';
+
+  const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
+  if (dialog) dialog.style.maxWidth = '520px';
+
+  updateDirectUploadFolderInputDisplay();
+}
+
+function updateDirectUploadFolderInputDisplay() {
+  const displayBox = document.getElementById('directFolderDisplayContent');
+  const nextBtn = document.getElementById('btnDirectFolderNext');
+  if (!displayBox || !nextBtn) return;
+
+  if (AppState.directUploadSelectedFolder) {
+    displayBox.innerHTML = `
+      <span style="font-size: 13.5px; color: #1e293b;">Selected Folder: <strong style="color: #0f172a;">${AppState.directUploadSelectedFolder}</strong></span>
+      <button type="button" onclick="clearDirectUploadSelectedFolder(event)" title="Remove selected folder" style="background: none; border: none; color: #ef4444; cursor: pointer; display: flex; align-items: center; padding: 2px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+    nextBtn.disabled = false;
+    nextBtn.style.background = '#008272';
+    nextBtn.style.color = '#ffffff';
+    nextBtn.style.cursor = 'pointer';
+    nextBtn.style.opacity = '1';
+  } else {
+    displayBox.innerHTML = `
+      <span id="directFolderPlaceholder" style="color: #64748b; font-size: 13.5px;">Select a folder</span>
+      <button type="button" class="sp-folder-icon-btn" title="Select Folder" style="background: none; border: none; cursor: pointer; color: #008272; display: flex; align-items: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+    `;
+    nextBtn.disabled = true;
+    nextBtn.style.background = '#e2e8f0';
+    nextBtn.style.color = '#94a3b8';
+    nextBtn.style.cursor = 'not-allowed';
+    nextBtn.style.opacity = '0.5';
+  }
+}
+
+function openDirectUploadFolderDrawer() {
+  const drawer = document.getElementById('directUploadFolderDrawer');
+  const backdrop = document.getElementById('directUploadDrawerBackdrop');
+  if (!drawer) return;
+
+  let dept = AppState.activeDepartment || 'Hospital Director Office';
+  const breadcrumbEl = document.getElementById('directDrawerBreadcrumb');
+  if (breadcrumbEl) {
+    breadcrumbEl.innerText = `${dept} > Direct Uploads`;
+  }
+
+  const searchInput = document.getElementById('directFolderSearchInput');
+  if (searchInput) searchInput.value = '';
+  AppState.directUploadFilterQuery = '';
+  AppState.directUploadTempFolder = AppState.directUploadSelectedFolder || null;
+
+  renderDirectDrawerFoldersList();
+  drawer.style.display = 'flex';
+  if (backdrop) backdrop.style.display = 'block';
+}
+
+function renderDirectDrawerFoldersList() {
+  const listEl = document.getElementById('directDrawerFoldersList');
+  if (!listEl) return;
+
+  let dept = AppState.activeDepartment || 'Hospital Director Office';
+  let branch = AppState.activeBranch || 'Innomick Al-Ahmadi Hospital';
+
+  let folders = [];
+  if (DIRECT_UPLOAD_FOLDER_MAP[dept]) {
+    folders = [...DIRECT_UPLOAD_FOLDER_MAP[dept]];
+  } else if (dept && (dept.toLowerCase().includes('information') || dept.toLowerCase().includes('it') || dept.toLowerCase().includes('technology'))) {
+    folders = ["test", "CIO Office", "Direct Uploads"];
+  } else {
+    folders = ["Testing", "Office Files", "Test", "Direct Uploads"];
+  }
+
+  // Also include any folders existing in departmentSites
+  const deptDocs = (InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) || [];
+  deptDocs.forEach(d => {
+    if (d.isFolder && d.name && !folders.includes(d.name)) {
+      folders.push(d.name);
+    }
+  });
+
+  if (AppState.directUploadFilterQuery) {
+    const q = AppState.directUploadFilterQuery.toLowerCase();
+    folders = folders.filter(f => f.toLowerCase().includes(q));
+  }
+
+  if (folders.length === 0) {
+    listEl.innerHTML = `<div style="font-size: 13px; color: #94a3b8; padding: 12px 6px;">No folders found matching filter.</div>`;
+    return;
+  }
+
+  listEl.innerHTML = folders.map(f => {
+    const isSelected = AppState.directUploadTempFolder === f;
+    return `
+      <div class="direct-drawer-folder-item ${isSelected ? 'selected' : ''}" onclick="selectDirectDrawerFolder('${f.replace(/'/g, "\\'")}')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isSelected ? '#008272' : '#64748b'}" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span style="font-size: 13.5px; font-weight: ${isSelected ? '600' : '500'};">${f}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectDirectDrawerFolder(folderName) {
+  AppState.directUploadTempFolder = folderName;
+  renderDirectDrawerFoldersList();
+}
+
+function saveDirectUploadSelectedFolder() {
+  if (!AppState.directUploadTempFolder) {
+    showToast('Please click on a folder to select it.', 'warning');
+    return;
+  }
+  AppState.directUploadSelectedFolder = AppState.directUploadTempFolder;
+  closeDirectUploadFolderDrawer();
+  updateDirectUploadFolderInputDisplay();
+}
+
+function closeDirectUploadFolderDrawer() {
+  const drawer = document.getElementById('directUploadFolderDrawer');
+  const backdrop = document.getElementById('directUploadDrawerBackdrop');
+  if (drawer) drawer.style.display = 'none';
+  if (backdrop) backdrop.style.display = 'none';
+}
+
+function filterDirectUploadFolders(query) {
+  AppState.directUploadFilterQuery = query || '';
+  renderDirectDrawerFoldersList();
+}
+
+function clearDirectUploadSelectedFolder(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  AppState.directUploadSelectedFolder = null;
+  AppState.directUploadTempFolder = null;
+  updateDirectUploadFolderInputDisplay();
+}
+
+function proceedToDirectUploadConfirmation() {
+  if (!AppState.directUploadSelectedFolder) {
+    showToast('Please select a folder.', 'warning');
+    return;
+  }
+
+  document.getElementById('uploadDirectFolderContainer').style.display = 'none';
+  document.getElementById('uploadDirectConfirmContainer').style.display = 'block';
+
+  const mainTitle = document.getElementById('uploadModalMainTitle');
+  if (mainTitle) mainTitle.innerText = '< Upload Confirmation';
+
+  const dialog = document.querySelector('#uploadModal .dms-modal-dialog');
+  if (dialog) dialog.style.maxWidth = '480px';
+}
+
+function executeDirectUploadConfirm() {
+  const folder = AppState.directUploadSelectedFolder || 'Testing';
+  const baseData = AppState.pendingUploadData || {};
+  const fileName = baseData.name || (AppState.attachedLocalFile ? AppState.attachedLocalFile.name : 'Abdul Test.xlsx');
+
+  const now = new Date();
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const uploadDateFormatted = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  const expireDateFormatted = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear() + 1}`;
+
+  const newDoc = {
+    id: String(Math.floor(400 + Math.random() * 600)),
+    name: fileName,
+    type: fileName.split('.').pop().toLowerCase() || 'docx',
+    category: baseData.category || 'Accreditation Documents',
+    subCategory: baseData.subCategory !== '-' ? baseData.subCategory : '-',
+    department: AppState.activeDepartment || 'Hospital Director Office',
+    owner: InnomickData.currentUser.name || 'MD Faisal Ahmed',
+    status: 'Active',
+    uploadDate: uploadDateFormatted,
+    expireDate: expireDateFormatted,
+    stakeHolder: baseData.stakeHolder !== '-' ? baseData.stakeHolder : 'Executive Office',
+    referenceNumber: 'INM-' + Math.floor(1000 + Math.random() * 9000),
+    vendor: baseData.vendor || 'Innomick Technologies Ltd.',
+    description: baseData.description !== '-' ? baseData.description : `Direct upload to ${folder}`,
+    folder: folder,
+    parentFolder: folder,
+    location: `${AppState.activeDepartment || 'Hospital Director Office'} > Direct Uploads > ${folder}`,
+    favorite: false,
+    reviewDate: baseData.reviewDate || '23-10-2026',
+    auditInspectionDate: baseData.auditInspectionDate || '23-10-2026',
+    inspectionArea: baseData.inspectionArea || 'ok',
+    findingsSummary: baseData.findingsSummary || 'ok',
+    actionStatus: baseData.actionStatus || 'Not Started'
+  };
+
+  // Close upload modal
+  closeUploadModal();
+
+  // Add document to department and show exact Info popup!
+  addDocumentToDepartmentAndShowSuccess(newDoc, 'Successfully submitted !');
+}
+
+function addDocumentToDepartmentAndShowSuccess(doc, successMessage) {
+  let branch = AppState.activeBranch || 'Innomick Al-Assima Hospital';
+  let dept = AppState.activeDepartment || 'Information Technology';
+
+  const isAhmadi = branch.includes('Ahmadi') || dept === 'Hospital Director Office';
+  const canonicalBranch = isAhmadi ? 'Innomick Al-Ahmadi Hospital' : 'Innomick Al-Assima Hospital';
+  const canonicalDept = isAhmadi ? 'Hospital Director Office' : 'Information Technology';
+  const aliasBranch = isAhmadi ? 'Al-Salam Al-Ahmadi Hospital' : 'Al-Salam Al-Assima Hospital';
+
+  // Make sure department object exists
+  if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
+  if (!InnomickData.departmentSites[canonicalBranch]) InnomickData.departmentSites[canonicalBranch] = {};
+  if (!InnomickData.departmentSites[canonicalBranch][canonicalDept]) InnomickData.departmentSites[canonicalBranch][canonicalDept] = [];
+
+  const targetFolder = doc.parentFolder || (doc.folder && doc.folder !== '-' ? doc.folder : (AppState.directUploadSelectedFolder || null));
+
+  // Create document object
+  const deptDoc = {
+    id: doc.id || String(Math.floor(400 + Math.random() * 600)),
+    name: doc.name || 'Document',
+    type: doc.type || (doc.name.split('.').pop() || 'docx').toLowerCase(),
+    category: doc.category || 'Accreditation Documents',
+    subCategory: doc.subCategory || '-',
+    department: canonicalDept,
+    owner: doc.owner || InnomickData.currentUser.name || 'MD Faisal Ahmed',
+    status: doc.status || 'Active',
+    uploadDate: doc.uploadDate || '23 October 2026',
+    expireDate: doc.expireDate || '23 October 2027',
+    stakeHolder: doc.stakeHolder || 'Executive Office',
+    referenceNumber: doc.referenceNumber || 'INM-' + Math.floor(1000 + Math.random() * 9000),
+    vendor: doc.vendor || 'Innomick Technologies Ltd.',
+    description: doc.description || '-',
+    folder: targetFolder || '-',
+    parentFolder: targetFolder && targetFolder !== '-' ? targetFolder : null,
+    location: doc.location || `${canonicalDept} > Direct Uploads > ${targetFolder || ''}`,
+    favorite: false,
+    reviewDate: doc.reviewDate || '23-10-2026',
+    auditInspectionDate: doc.auditInspectionDate || '23-10-2026',
+    inspectionArea: doc.inspectionArea || 'ok',
+    findingsSummary: doc.findingsSummary || 'ok',
+    actionStatus: doc.actionStatus || 'Not Started'
+  };
+
+  // Add at top of department list!
+  InnomickData.departmentSites[canonicalBranch][canonicalDept].unshift(deptDoc);
+
+  // Also add to alias branch if it exists
+  if (!InnomickData.departmentSites[aliasBranch]) InnomickData.departmentSites[aliasBranch] = {};
+  if (!InnomickData.departmentSites[aliasBranch][canonicalDept]) InnomickData.departmentSites[aliasBranch][canonicalDept] = [];
+  InnomickData.departmentSites[aliasBranch][canonicalDept].unshift(deptDoc);
+
+  // If uploaded to a folder, navigate the view to that folder so the file is seen in it!
+  if (deptDoc.parentFolder) {
+    AppState.activeDeptFolder = deptDoc.parentFolder;
+  }
+
+  // Also add to recentDocuments and allFiles for home view
+  if (InnomickData.recentDocuments) InnomickData.recentDocuments.unshift(deptDoc);
+  if (InnomickData.allFiles) InnomickData.allFiles.unshift(deptDoc);
+
+  // Re-render current view so new row is visible immediately
+  renderCurrentView();
+
+  // Show Info popup
+  showInfoSuccessModal(successMessage || 'Successfully submitted !');
+}
+
+function showInfoSuccessModal(msg) {
+  const modal = document.getElementById('uploadSuccessModal');
+  const msgEl = document.getElementById('uploadSuccessMessage');
+  if (msgEl) msgEl.innerText = msg || 'Successfully submitted !';
+  if (modal) modal.classList.add('active');
+}
+
+function closeUploadSuccessModal() {
+  const modal = document.getElementById('uploadSuccessModal');
+  if (modal) modal.classList.remove('active');
+}
+
 
 // Step 2 -> Step 3 (Individual Workflow)
 function showSelectIndividualWorkflow() {
@@ -5183,12 +6021,17 @@ function submitSelectedWorkflow() {
       id: doc.id,
       name: doc.name,
       type: doc.type,
-      uploadDate: doc.uploadDate,
-      location: doc.location,
-      owner: doc.owner,
-      category: doc.category,
-      subCategory: doc.subCategory,
-      department: doc.department,
+      uploadDate: doc.uploadDate || '2026-10-23',
+      lastAccessed: 'Just now',
+      location: doc.location || 'My Organization',
+      owner: doc.owner || 'Mohammed Wasifuddin',
+      category: doc.category || 'Accreditation Documents',
+      subCategory: doc.subCategory || '-',
+      department: doc.department || 'Information Technology',
+      referenceNumber: doc.referenceNumber || 'AST-2026-901',
+      stakeHolder: doc.stakeHolder || 'Clinical Asset Directorate',
+      vendor: doc.vendor || 'Innomick Technologies Ltd.',
+      description: doc.description || 'Uploaded document.',
       favorite: false
     });
   }
@@ -5280,13 +6123,7 @@ function submitSelectedWorkflow() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
-  if (isGroup) {
-    showToast(`Successfully uploaded "${doc.name}" with group workflow "${tpl ? tpl.name : 'Group'}"!`, 'success');
-  } else {
-    const isDouble = tpl && tpl.steps && tpl.steps.length > 1;
-    showToast(`Successfully uploaded "${doc.name}" with workflow "${tpl ? tpl.name : 'Individual'}" (${isDouble ? 'Double Approval' : 'Single Approval'})!`, 'success');
-  }
-  renderCurrentView();
+  addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
 }
 
 // Back to Step 2 (< Select Workflow)
@@ -5296,6 +6133,7 @@ function backToUploadStep2() {
   if (document.getElementById('uploadViewWorkflowContainer')) document.getElementById('uploadViewWorkflowContainer').style.display = 'none';
   if (document.getElementById('uploadStep4WorkflowFormContainer')) document.getElementById('uploadStep4WorkflowFormContainer').style.display = 'none';
   document.getElementById('uploadStep2Container').style.display = 'block';
+  updateStep2WorkflowFooter();
 
   const backBtn = document.getElementById('uploadModalBackBtn');
   if (backBtn) backBtn.style.display = 'none';
@@ -5377,31 +6215,35 @@ function backToWorkflowStep3() {
   if (dialog) dialog.style.maxWidth = '740px';
 }
 
-// Skip Workflow execution (Immediately publishes document directly into file list)
+// Skip Workflow execution (Immediately publishes document directly into file list in My Files)
 function executeSkipWorkflowUpload() {
   const doc = AppState.pendingUploadData;
   if (!doc) return;
 
   doc.status = 'Active';
-  doc.location = AppState.currentUploadSource === 'my-organization' ? 'My Organization' 
-               : AppState.currentUploadSource === 'my-department' ? 'My Department' 
-               : 'My Files';
+  doc.location = 'My Files';
 
-  // Add at the very beginning of the collections so it immediately appears as the first row!
+  // Add at the very beginning of myFiles
+  if (!InnomickData.myFiles) InnomickData.myFiles = [];
   InnomickData.myFiles.unshift(doc);
-  InnomickData.documents.unshift(doc);
+  if (InnomickData.documents) InnomickData.documents.unshift(doc);
 
   if (InnomickData.recentDocuments) {
     InnomickData.recentDocuments.unshift({
       id: doc.id,
       name: doc.name,
       type: doc.type,
-      uploadDate: doc.uploadDate,
-      location: doc.location,
-      owner: doc.owner,
-      category: doc.category,
-      subCategory: doc.subCategory,
-      department: doc.department,
+      uploadDate: doc.uploadDate || '2026-10-23',
+      lastAccessed: 'Just now',
+      location: 'My Files',
+      owner: doc.owner || InnomickData.currentUser.name || 'Mohammed Wasifuddin',
+      category: doc.category || 'Accreditation Documents',
+      subCategory: doc.subCategory || '-',
+      department: doc.department || 'Information Technology',
+      referenceNumber: doc.referenceNumber || 'AST-2026-902',
+      stakeHolder: doc.stakeHolder || 'Clinical Asset Directorate',
+      vendor: doc.vendor || 'Innomick Technologies Ltd.',
+      description: doc.description || 'Uploaded document directly.',
       favorite: false
     });
   }
@@ -5426,8 +6268,8 @@ function executeSkipWorkflowUpload() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
-  showToast(`Successfully uploaded "${doc.name}" directly to ${doc.location}!`, 'success');
   renderCurrentView();
+  showInfoSuccessModal('Successfully submitted !');
 }
 
 // Submit with Workflow execution (Department / Organization / Workflow route)
@@ -5469,12 +6311,17 @@ function executeWorkflowUploadSubmit() {
       id: doc.id,
       name: doc.name,
       type: doc.type,
-      uploadDate: doc.uploadDate,
-      location: doc.location,
-      owner: doc.owner,
-      category: doc.category,
-      subCategory: doc.subCategory,
-      department: doc.department,
+      uploadDate: doc.uploadDate || '2026-10-23',
+      lastAccessed: 'Just now',
+      location: doc.location || 'My Organization',
+      owner: doc.owner || 'Mohammed Wasifuddin',
+      category: doc.category || 'Accreditation Documents',
+      subCategory: doc.subCategory || '-',
+      department: doc.department || 'Information Technology',
+      referenceNumber: doc.referenceNumber || 'AST-2026-903',
+      stakeHolder: doc.stakeHolder || 'Clinical Asset Directorate',
+      vendor: doc.vendor || 'Innomick Technologies Ltd.',
+      description: doc.description || 'Workflow submitted document.',
       favorite: false
     });
   }
@@ -5547,8 +6394,7 @@ function executeWorkflowUploadSubmit() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
-  showToast(`Successfully uploaded "${doc.name}" and routed for ${actionName} to ${selectedEntity}!`, 'success');
-  renderCurrentView();
+  addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
 }
 
 // =============================================================================
