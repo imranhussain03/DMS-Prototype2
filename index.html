@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Innomick Technologies - Document Management System</title>
+  <meta name="description" content="Innomick Technologies Enterprise Document Management System (DMS) Prototype powered by modern SharePoint architecture.">
+  <base href="/">
+  <link rel="icon" type="image/png" href="assets/innomick_logo_square.png">
+  <link rel="stylesheet" href="style.css?v=20261023_v17">
+</head>
+<body>
+
+  <!-- =========================================================================
+       1. MICROSOFT 365 GLOBAL TOP BAR
+       ========================================================================= -->
+  <header class="m365-topbar">
+    <div class="topbar-left">
+      <button class="waffle-btn" title="App launcher">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="5" r="2.2"/>
+          <circle cx="12" cy="5" r="2.2"/>
+          <circle cx="19" cy="5" r="2.2"/>
+          <circle cx="5" cy="12" r="2.2"/>
+          <circle cx="12" cy="12" r="2.2"/>
+          <circle cx="19" cy="12" r="2.2"/>
+          <circle cx="5" cy="19" r="2.2"/>
+          <circle cx="12" cy="19" r="2.2"/>
+          <circle cx="19" cy="19" r="2.2"/>
+        </svg>
+      </button>
+      <span class="m365-tenant-title">Innomick Technologies</span>
+    </div>
+
+    <div class="topbar-right">
+      <!-- 1. Copilot Panel Trigger -->
+      <button class="topbar-icon-btn" id="topbarCopilotBtn" onclick="toggleHeaderPanel('copilot')" title="Copilot">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"/>
+          <polyline points="8 6 2 12 8 18"/>
+        </svg>
+      </button>
+
+      <!-- 2. Next Steps Panel Trigger -->
+      <button class="topbar-icon-btn" id="topbarNextStepsBtn" onclick="toggleHeaderPanel('nextsteps')" title="Next steps">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+      </button>
+
+      <!-- 3. Submit Feedback Panel Trigger -->
+      <button class="topbar-icon-btn" id="topbarFeedbackBtn" onclick="toggleHeaderPanel('feedback')" title="Submit feedback to Microsoft">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          <path d="M9 10h.01"/>
+          <path d="M15 10h.01"/>
+          <path d="M9.5 14a3.5 3.5 0 0 0 5 0"/>
+        </svg>
+      </button>
+
+      <!-- 4. Settings Panel Trigger -->
+      <button class="topbar-icon-btn" id="topbarSettingsBtn" onclick="toggleHeaderPanel('settings')" title="Settings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+
+      <!-- 5. Help Trigger -->
+      <button class="topbar-icon-btn" id="topbarHelpBtn" onclick="toggleHeaderPanel('help')" title="Help">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+
+      <!-- 6. Microsoft 365 User Avatar Button -->
+      <div style="position: relative;">
+        <div class="user-avatar-btn" id="userPersonaBtn" onclick="toggleM365ProfileFlyout(event)" title="Account manager for current user" style="cursor: pointer; user-select: none;">
+          <span id="topbarAvatarText">I</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       2. DMS APPLICATION HEADER (Rebranded with Official Innomick Logo)
+       ========================================================================= -->
+  <div class="dms-app-header">
+    <div class="app-header-left">
+      <div class="dms-brand-wrapper" style="display: flex; align-items: center; gap: 12px;">
+        <div class="innomick-brand-mark" style="display: flex; align-items: center;">
+          <img src="assets/innomick_logo_horizontal.png" alt="Innomick Technology" style="height: 32px; width: auto; object-fit: contain;">
+        </div>
+        <span class="dms-app-title" style="border-left: 1px solid #cbd5e1; padding-left: 12px; margin-left: 0;">Document Management System</span>
+      </div>
+    </div>
+
+    <div class="app-header-right">
+      <span class="header-public-group">Public group</span>
+      <span class="header-members-count">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+        3 members
+      </span>
+      <button class="header-more-btn" title="More options">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="12" cy="12" r="2"/>
+          <circle cx="19" cy="12" r="2"/>
+          <circle cx="5" cy="12" r="2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       3. DMS MAIN LAYOUT (Sidebar + Main View Workspace)
+       ========================================================================= -->
+  <div class="dms-layout-body">
+    <!-- Left Navigation Sidebar -->
+    <aside class="dms-sidebar">
+      <ul class="sidebar-nav-list">
+        <li>
+          <a class="nav-item active" data-route="home" onclick="navigateTo('home')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+            <span>Home</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="approvals" onclick="navigateTo('approvals')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="m9 15 2 2 4-4"/>
+            </svg>
+            <span>My Approvals</span>
+            <span class="nav-badge approvals-badge" id="sidebarApprovalsBadge">85</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="favorites" onclick="navigateTo('favorites')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>My Favorites</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="my-files" onclick="navigateTo('my-files')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span>My Files</span>
+          </a>
+        </li>
+        <!-- My Departments Hierarchical Tree Navigation -->
+        <li class="nav-tree-item" id="navTreeMyDepartments">
+          <a class="nav-item" data-route="department" onclick="toggleMyDepartmentsTree(event)" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="5" r="2.5"/>
+                <circle cx="6" cy="19" r="2.5"/>
+                <circle cx="18" cy="19" r="2.5"/>
+                <path d="M12 7.5v4m-6 4.5v-1.5a1.5 1.5 0 0 1 1.5-1.5h9a1.5 1.5 0 0 1 1.5 1.5v1.5"/>
+              </svg>
+              <span>My Departments</span>
+            </div>
+            <svg class="nav-chevron" id="chevronMyDepartments" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s;">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </a>
+
+          <!-- Hospital Branches Submenu -->
+          <ul class="nav-sub-menu" id="subDepartmentsMenu" style="list-style: none; padding: 0; margin: 0;">
+            <!-- Branch 1: Innomick Al-Ahmadi Hospital -->
+            <li class="nav-branch-item" id="navBranchAhmadi">
+              <a class="nav-item nav-item-branch" onclick="toggleBranchAhmadi(event)" style="display: flex; align-items: center; justify-content: space-between; padding-left: 26px; font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="5" r="2.5"/>
+                    <circle cx="6" cy="19" r="2.5"/>
+                    <circle cx="18" cy="19" r="2.5"/>
+                    <path d="M12 7.5v3.5m-6 4.5v-1a1.5 1.5 0 0 1 1.5-1.5h9a1.5 1.5 0 0 1 1.5 1.5v1"/>
+                  </svg>
+                  <span>Innomick Al-Ahmadi Hospital</span>
+                </div>
+                <svg class="nav-chevron" id="chevronAhmadi" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s;">
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </a>
+
+              <!-- Hospital Director Office -->
+              <ul class="nav-sub-sub-menu" id="subAhmadiDepts" style="list-style: none; padding: 0; margin: 0;">
+                <li>
+                  <a class="nav-item nav-item-dept" id="navDeptAhmadiHDO" onclick="navigateToDepartment('Innomick Al-Ahmadi Hospital', 'Hospital Director Office', event)" style="padding-left: 42px; font-size: 12.5px; display: flex; align-items: center; gap: 8px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    <span>Hospital Director Office</span>
+                  </a>
+                </li>
+              </ul>
+            </li>
+
+            <!-- Branch 2: Innomick Al-Assima Hospital -->
+            <li class="nav-branch-item" id="navBranchAssima">
+              <a class="nav-item nav-item-branch" onclick="toggleBranchAssima(event)" style="display: flex; align-items: center; justify-content: space-between; padding-left: 26px; font-size: 13px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="5" r="2.5"/>
+                    <circle cx="6" cy="19" r="2.5"/>
+                    <circle cx="18" cy="19" r="2.5"/>
+                    <path d="M12 7.5v3.5m-6 4.5v-1a1.5 1.5 0 0 1 1.5-1.5h9a1.5 1.5 0 0 1 1.5 1.5v1"/>
+                  </svg>
+                  <span>Innomick Al-Assima Hospital</span>
+                </div>
+                <svg class="nav-chevron" id="chevronAssima" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition: transform 0.2s;">
+                  <polyline points="18 15 12 9 6 15"/>
+                </svg>
+              </a>
+
+              <!-- Information Technology -->
+              <ul class="nav-sub-sub-menu" id="subAssimaDepts" style="list-style: none; padding: 0; margin: 0;">
+                <li>
+                  <a class="nav-item nav-item-dept" id="navDeptAssimaIT" onclick="navigateToDepartment('Innomick Al-Assima Hospital', 'Information Technology', event)" style="padding-left: 42px; font-size: 12.5px; display: flex; align-items: center; gap: 8px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                    </svg>
+                    <span>Information Technology</span>
+                  </a>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+        <li>
+          <a class="nav-item" data-route="organization" onclick="navigateTo('organization')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"/>
+              <rect x="14" y="3" width="7" height="7"/>
+              <rect x="14" y="14" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/>
+            </svg>
+            <span>My Organization</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="shared" onclick="navigateTo('shared')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+              <polyline points="16 6 12 2 8 6"/>
+              <line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            <span>Shared Files</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="categories" onclick="navigateTo('categories')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+            </svg>
+            <span>Categories</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="expiring" onclick="navigateTo('expiring')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 14 14"/>
+            </svg>
+            <span>Expiring Files</span>
+          </a>
+        </li>
+        <li>
+          <a class="nav-item" data-route="recycle-bin" onclick="navigateTo('recycle-bin')">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            <span>Recycle Bin</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="sidebar-footer">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+        <span>Innomick DMS v2.4 (UAT)</span>
+      </div>
+    </aside>
+
+    <!-- Main Dynamic Content Workspace -->
+    <main class="dms-content-area" id="mainContentContainer">
+      <!-- Injected via app.js -->
+    </main>
+  </div>
+
+  <!-- =========================================================================
+       4. MODALS & POPUPS
+       ========================================================================= -->
+
+  <!-- Global Native Device File Browser Input (Triggered first upon clicking Upload) -->
+  <input type="file" id="mainDeviceFileInput" style="display: none;" onchange="handleMainDeviceFileSelected(this)">
+
+  <!-- Upload Document Modal (Exact Match with Live Video Recording & SharePoint Workflow) -->
+  <div class="modal-overlay" id="uploadModal" onclick="closeUploadModal()">
+    <div class="dms-modal-dialog" onclick="event.stopPropagation()" style="background: #ffffff; max-width: 620px; border-radius: 4px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+      <div class="modal-header" id="uploadModalHeader" style="background: #ffffff; border-bottom: 1px solid #f1f5f9; padding: 14px 22px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="uploadModalBackBtn" onclick="handleUploadModalBackClick()" style="display: none; background: none; border: none; cursor: pointer; color: #008272; padding: 0; align-items: center;" title="Back">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <h3 class="modal-title" id="uploadModalMainTitle" onclick="handleUploadModalBackClick()" style="font-size: 16px; font-weight: 600; color: #008272; margin: 0; cursor: pointer;">Upload Document</h3>
+          <span id="uploadModalSubTitle" style="display: none; font-size: 12px; color: #64748b;">Step 1: Document Metadata & Classification</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeUploadModal()" style="color: #008272;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Step 1: Metadata Form -->
+      <form id="uploadStep1Form" onsubmit="handleUploadStep1Next(event)">
+        <div class="modal-body" style="padding: 20px 24px; max-height: calc(85vh - 130px); overflow-y: auto;">
+          <!-- Category Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Category <span style="color: #dc2626;">*</span></label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="uploadCategorySelect" required onchange="handleUploadCategoryChange(this.value)">
+                <option value="" disabled selected>Select Category</option>
+                <option value="Accreditation Documents">Accreditation Documents</option>
+                <option value="Assessment Results">Assessment Results</option>
+                <option value="Asset Inventories">Asset Inventories</option>
+                <option value="Audit Documents">Audit Documents</option>
+                <option value="Branding Guidelines">Branding Guidelines</option>
+                <option value="Budget Plans">Budget Plans</option>
+                <option value="Calibration Certificates">Calibration Certificates</option>
+                <option value="Campaign Materials">Campaign Materials</option>
+                <option value="Certification Records">Certification Records</option>
+                <option value="Change Requests (RFC)">Change Requests (RFC)</option>
+                <option value="Client Deliverables & PoCs">Client Deliverables & PoCs</option>
+                <option value="Compliance & SOC2 Checklists">Compliance & SOC2 Checklists</option>
+                <option value="Contracts & Client SOWs">Contracts & Client SOWs</option>
+                <option value="Press Releases">Press Releases</option>
+                <option value="Press Release">Press Release</option>
+                <option value="Invoices & Receipts">Invoices & Receipts</option>
+                <option value="Policies & Procedures">Policies & Procedures</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dynamic Category Specific Fields Container (Populated when category selected) -->
+          <div id="dynamicCategoryFieldsContainer"></div>
+
+          <!-- Sub category Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Sub category</label>
+            <div class="sp-upload-form-control">
+              <input type="text" class="sp-form-input" id="uploadSubCategory" placeholder="Enter Sub Category">
+            </div>
+          </div>
+
+          <!-- Description Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Description</label>
+            <div class="sp-upload-form-control">
+              <input type="text" class="sp-form-input" id="uploadDescription" placeholder="The description goes here..">
+            </div>
+          </div>
+
+          <!-- Stakeholder Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Stakeholder</label>
+            <div class="sp-upload-form-control">
+              <input type="text" class="sp-form-input" id="uploadStakeholder" placeholder="Enter Stake Holder">
+            </div>
+          </div>
+
+          <!-- Add File Permission Row (Hidden to match live SharePoint DMS) -->
+          <div class="sp-upload-form-row" id="uploadFilePermissionRow" style="display: none;">
+            <label class="sp-upload-form-label">File Permission</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="uploadFilePermission">
+                <option value="Department Members (Read/Write)">Department Members (Read/Write)</option>
+                <option value="Organization Wide (Read Only)">Organization Wide (Read Only)</option>
+                <option value="Restricted Executive Clearance">Restricted Executive Clearance</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Owner Row (Readonly) -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Owner</label>
+            <div class="sp-upload-form-control">
+              <div class="sp-upload-readonly-box" id="uploadOwnerName">Intranet</div>
+            </div>
+          </div>
+
+          <!-- Department Row (Readonly with Pill) -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label" id="uploadDeptLabel">Department</label>
+            <div class="sp-upload-form-control">
+              <div class="sp-upload-readonly-box">
+                <span class="sp-upload-dept-pill" id="uploadDeptBadge">Information Technology</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload date Row (Readonly) -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Upload date</label>
+            <div class="sp-upload-form-control">
+              <div class="sp-upload-readonly-box" id="uploadDateDisplay">16 Oct 2026</div>
+            </div>
+          </div>
+
+          <!-- Attach file Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Attach file</label>
+            <div class="sp-upload-form-control">
+              <div class="sp-upload-file-chip-box" style="width: 100%;">
+                <div class="sp-file-attachment-chip" style="width: 100%; display: flex; align-items: center; justify-content: space-between; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 4px; padding: 6px 12px; cursor: pointer;" onclick="document.getElementById('realFileInput').click()" title="Click to browse different file">
+                  <div style="display: flex; align-items: center; gap: 8px; overflow: hidden;">
+                    <span id="uploadAttachedFileIcon" style="display: flex; align-items: center;">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="#0284c7" style="flex-shrink: 0;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                        <path d="M14 2v6h6" fill="#0369a1"/>
+                        <text x="8" y="18" fill="white" font-size="8" font-weight="bold">W</text>
+                      </svg>
+                    </span>
+                    <span class="sp-file-chip-name" id="uploadAttachedFileName" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; color: #0f172a;">Imran-Portal-Flow-Migration-Review (2).docx</span>
+                  </div>
+                </div>
+                <input type="file" id="realFileInput" style="display: none;" onchange="handleFileChosen(this)">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="submit" class="btn-primary-teal" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Next</button>
+        </div>
+      </form>
+
+      <!-- Step 2: Select Workflow (Exact Match with Live SharePoint Video Screenshot) -->
+      <div id="uploadStep2Container" style="display: none;">
+        <div class="modal-body" style="padding: 28px 24px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <!-- Individual Workflow Card -->
+            <div class="workflow-choice-card" id="choiceCardIndividual" onclick="showSelectIndividualWorkflow()" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; background: #fff; transition: all 0.15s;">
+              <div style="width: 36px; height: 36px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </div>
+              <span style="font-size: 13.5px; font-weight: 600; color: #1e293b;">Individual Workflow</span>
+            </div>
+
+            <!-- Group Workflow Card -->
+            <div class="workflow-choice-card" id="choiceCardGroup" onclick="showSelectGroupWorkflow()" style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; background: #fff; transition: all 0.15s;">
+              <div style="width: 36px; height: 36px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <span style="font-size: 13.5px; font-weight: 600; color: #1e293b;">Group Workflow</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" id="btnSkipWorkflow" class="btn-primary-teal" onclick="executeSkipWorkflowUpload()" style="border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600;">Skip workflow</button>
+        </div>
+      </div>
+
+      <!-- Step 3 (Individual): Select Individual Workflow (Exact Match with Live SharePoint Screenshot) -->
+      <div id="uploadStep3IndividualContainer" style="display: none;">
+        <div class="modal-body" style="padding: 20px 24px; max-height: calc(85vh - 130px); overflow-y: auto;">
+          <div id="individualWorkflowGrid" class="sp-workflow-grid">
+            <!-- Dynamically populated with individual template cards & blank card -->
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" id="btnViewIndividualWorkflow" class="btn-outline-teal" onclick="viewSelectedWorkflow()" style="display: none; border: 1px solid #008272; color: #008272; background: #fff; border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600; cursor: pointer;">View</button>
+          <button type="button" id="btnSubmitIndividualWorkflow" class="btn-primary-teal" onclick="submitSelectedWorkflow()" disabled style="border-radius: 4px; padding: 6px 22px; font-size: 13px; font-weight: 600; opacity: 0.6; cursor: not-allowed;">Submit</button>
+        </div>
+      </div>
+
+      <!-- Step 3 (Group): Select Group Workflow (Exact Match with Live SharePoint Screenshot) -->
+      <div id="uploadStep3GroupContainer" style="display: none;">
+        <div class="modal-body" style="padding: 20px 24px; max-height: calc(85vh - 130px); overflow-y: auto;">
+          <div id="groupWorkflowGrid" class="sp-workflow-grid">
+            <!-- Dynamically populated with group template cards & blank card -->
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" id="btnViewGroupWorkflow" class="btn-outline-teal" onclick="viewSelectedWorkflow()" style="display: none; border: 1px solid #008272; color: #008272; background: #fff; border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600; cursor: pointer;">View</button>
+          <button type="button" id="btnSubmitGroupWorkflow" class="btn-primary-teal" onclick="submitSelectedWorkflow()" disabled style="border-radius: 4px; padding: 6px 22px; font-size: 13px; font-weight: 600; opacity: 0.6; cursor: not-allowed;">Submit</button>
+        </div>
+      </div>
+
+      <!-- Step: View Workflow (Exact Match with Live SharePoint Screenshots 4 & 5 - Single / Double Approval) -->
+      <div id="uploadViewWorkflowContainer" style="display: none;">
+        <div class="modal-body" style="padding: 14px 24px; max-height: calc(85vh - 100px); overflow-y: auto;">
+          <div id="viewWorkflowStepsList" style="display: flex; flex-direction: column; gap: 8px;">
+            <!-- Single or Double Approval steps populated dynamically -->
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="backFromViewWorkflow()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" class="btn-primary-teal" onclick="submitSelectedWorkflow()" style="border-radius: 4px; padding: 6px 22px; font-size: 13px; font-weight: 600; cursor: pointer;">Submit</button>
+        </div>
+      </div>
+
+      <!-- Step 4: Individual / Group Workflow Configuration Form (Exact Match with Live SharePoint Screenshot) -->
+      <div id="uploadStep4WorkflowFormContainer" style="display: none;">
+        <div class="modal-body" style="padding: 20px 24px;">
+          <!-- Group / Approver Row -->
+          <div class="sp-upload-form-row" id="wfRowEntity">
+            <label class="sp-upload-form-label" id="wfLabelEntity">Group</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="wfSelectEntity">
+                <!-- Populated dynamically: Groups or Approvers -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Action Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Action</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="wfSelectAction">
+                <option value="Approve" selected>Approve</option>
+                <option value="Review & Comment">Review & Comment</option>
+                <option value="Executive Sign-off">Executive Sign-off</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Due Date Row -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Due Date</label>
+            <div class="sp-upload-form-control">
+              <input type="date" class="sp-form-input" id="wfDueDate" value="2026-10-23">
+            </div>
+          </div>
+
+          <!-- Save Workflow as Template Toggle Row -->
+          <div class="sp-upload-form-row" style="align-items: center;">
+            <label class="sp-upload-form-label" style="font-size: 12.5px;">Save Workflow as Template</label>
+            <div class="sp-upload-form-control" style="display: flex; align-items: center;">
+              <input type="checkbox" id="wfSaveAsTemplate" style="width: 18px; height: 18px; cursor: pointer; accent-color: #008272;">
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="backToWorkflowStep3()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+          <button type="button" class="btn-primary-teal" onclick="executeWorkflowUploadSubmit()" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Submit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Workflow Modal (Exact Match with Live SharePoint Screenshot 15) -->
+  <div class="modal-overlay" id="createWorkflowModal">
+    <div class="dms-modal-dialog" style="max-width: 520px; border-radius: 4px;">
+      <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 22px;">
+        <h3 class="modal-title" style="font-size: 15.5px; font-weight: 600; color: #008272;">Create Workflow</h3>
+        <button class="modal-close-btn" onclick="closeCreateWorkflowModal()" style="color: #008272;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 24px;">
+        <div class="workflow-type-options" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="workflow-choice-card" onclick="openCreateIndividualWorkflow()" style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.15s; background: #fff;">
+            <div style="width: 38px; height: 38px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="5" r="3"/>
+                <line x1="12" y1="8" x2="12" y2="14"/>
+                <circle cx="6" cy="19" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="6" y1="16" x2="12" y2="14"/>
+                <line x1="18" y1="16" x2="12" y2="14"/>
+              </svg>
+            </div>
+            <div>
+              <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">Individual Workflow</span>
+              <span style="font-size: 11px; color: #64748b;">Single approver review</span>
+            </div>
+          </div>
+
+          <div class="workflow-choice-card" onclick="openCreateGroupWorkflow()" style="border: 1px solid #e2e8f0; border-radius: 4px; padding: 18px 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; transition: all 0.15s; background: #fff;">
+            <div style="width: 38px; height: 38px; background: #008272; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="5" r="3"/>
+                <line x1="12" y1="8" x2="12" y2="14"/>
+                <circle cx="6" cy="19" r="3"/>
+                <circle cx="18" cy="19" r="3"/>
+                <line x1="6" y1="16" x2="12" y2="14"/>
+                <line x1="18" y1="16" x2="12" y2="14"/>
+              </svg>
+            </div>
+            <div>
+              <span style="display: block; font-size: 13.5px; font-weight: 600; color: #1e293b;">Group Workflow</span>
+              <span style="font-size: 11px; color: #64748b;">Multi-approver group sign-off</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end;">
+        <button type="button" class="btn-secondary" onclick="closeCreateWorkflowModal()" style="border-radius: 4px; padding: 6px 20px; font-size: 13px;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Approval Review & Decision Modal -->
+  <div class="modal-overlay" id="approvalReviewModal">
+    <div class="dms-modal-dialog" style="max-width: 620px; border-radius: 4px;">
+      <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 16px 22px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 4px; background: #e6f7f4; display: flex; align-items: center; justify-content: center; color: #008272; flex-shrink: 0;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="m9 15 2 2 4-4"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="modal-title" style="font-size: 15.5px; font-weight: 600; color: #008272; margin: 0;">Approval Decision & Review</h3>
+            <span style="font-size: 12px; color: #64748b;">Review document details, stage requirements, and submit decision</span>
+          </div>
+        </div>
+        <button class="modal-close-btn" onclick="closeApprovalModal()" style="color: #008272;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px; max-height: calc(85vh - 130px); overflow-y: auto;">
+        <!-- Document Card Summary -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 14px 16px; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span id="appReviewDocIcon"></span>
+              <strong id="appReviewDocName" style="font-size: 14px; color: #0f172a;"></strong>
+            </div>
+            <span id="appReviewPriorityBadge" class="status-pill"></span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 12px;">
+            <div><span style="color: #64748b;">Category:</span> <strong id="appReviewCategory" style="color: #334155;"></strong></div>
+            <div><span style="color: #64748b;">Submitted By:</span> <strong id="appReviewSubmittedBy" style="color: #334155;"></strong></div>
+            <div><span style="color: #64748b;">Department:</span> <strong id="appReviewDept" style="color: #334155;"></strong></div>
+            <div><span style="color: #64748b;">Submitted Date:</span> <strong id="appReviewDate" style="color: #334155;"></strong></div>
+            <div><span style="color: #64748b;">Current Stage:</span> <strong id="appReviewStage" style="color: #008272;"></strong></div>
+            <div><span style="color: #64748b;">Assigned Reviewer:</span> <strong id="appReviewApprover" style="color: #334155;">MD Faisal Ahmed</strong></div>
+          </div>
+        </div>
+
+        <!-- Decision Selection -->
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label class="form-label" style="font-weight: 600; margin-bottom: 8px; display: block; font-size: 13px;">Decision <span class="required">*</span></label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+            <label style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff;" id="appDecisionApproveLabel">
+              <input type="radio" name="appDecisionRadio" value="Approved" checked style="accent-color: #008272;">
+              <div>
+                <strong style="display: block; font-size: 13px; color: #008272;">Approve</strong>
+                <span style="font-size: 11px; color: #64748b;">Advance to publish</span>
+              </div>
+            </label>
+            <label style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff;" id="appDecisionRejectLabel">
+              <input type="radio" name="appDecisionRadio" value="Rejected" style="accent-color: #ef4444;">
+              <div>
+                <strong style="display: block; font-size: 13px; color: #dc2626;">Reject</strong>
+                <span style="font-size: 11px; color: #64748b;">Return with comments</span>
+              </div>
+            </label>
+            <label style="border: 1px solid #cbd5e1; border-radius: 4px; padding: 10px; display: flex; align-items: center; gap: 8px; cursor: pointer; background: #fff;" id="appDecisionChangesLabel">
+              <input type="radio" name="appDecisionRadio" value="Changes Requested" style="accent-color: #f59e0b;">
+              <div>
+                <strong style="display: block; font-size: 13px; color: #d97706;">Request Edits</strong>
+                <span style="font-size: 11px; color: #64748b;">Needs author revision</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Comments -->
+        <div class="form-group" style="margin-bottom: 8px;">
+          <label class="form-label" style="font-weight: 600; margin-bottom: 6px; display: block; font-size: 13px;">Review Remarks & Feedback <span class="required">*</span></label>
+          <textarea id="appReviewComments" class="sp-form-input" style="height: 75px; resize: vertical; font-family: inherit; font-size: 12.5px;" placeholder="Add approval remarks, condition of sign-off, or reason for return..."></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 22px; border-top: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <button type="button" class="btn-secondary" onclick="previewApprovalDocument()" style="font-size: 13px; display: flex; align-items: center; gap: 6px; border-radius: 4px; padding: 6px 14px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Preview File
+        </button>
+        <div style="display: flex; gap: 10px;">
+          <button type="button" class="btn-secondary" onclick="closeApprovalModal()" style="font-size: 13px; border-radius: 4px; padding: 6px 18px;">Cancel</button>
+          <button type="button" class="btn-primary-teal" onclick="submitApprovalDecision()" style="font-size: 13px; font-weight: 600; padding: 6px 20px; border-radius: 4px;">Submit Decision</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approval Remarks Modal (Matching Screenshot 4) -->
+  <div class="modal-overlay" id="approvalRemarksModal">
+    <div class="dms-modal-dialog" style="max-width: 480px; border-radius: 4px; overflow: hidden; background: #ffffff; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
+      <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between;">
+        <h3 class="modal-title" id="approvalRemarksModalTitle" style="font-size: 15px; font-weight: 600; color: #008272; margin: 0;">Approval</h3>
+        <button class="modal-close-btn" onclick="closeApprovalRemarksModal()" style="color: #008272; background: none; border: none; cursor: pointer; padding: 0;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 18px 20px;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label" id="approvalRemarksModalLabel" style="font-weight: 500; margin-bottom: 8px; display: block; font-size: 13px; color: #334155;">Approval Remarks</label>
+          <textarea id="approvalRemarksTextarea" class="sp-form-input" style="width: 100%; height: 110px; resize: vertical; font-family: inherit; font-size: 13px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; outline: none;" placeholder="ok">ok</textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 12px 20px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeApprovalRemarksModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px; border: 1px solid #cbd5e1; background: #ffffff; color: #334155; cursor: pointer;">Cancel</button>
+        <button type="button" class="btn-primary-teal" id="approvalRemarksSubmitBtn" onclick="submitApprovalRemarksAction()" style="border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600; background: #008272; color: #ffffff; border: none; cursor: pointer;">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Individual Workflow Modal (Matching Live SharePoint Screenshot 1 & 2) -->
+  <div class="modal-overlay" id="individualWorkflowModal">
+    <div class="dms-modal-dialog" style="max-width: 580px; border-radius: 4px;">
+      <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center;">
+          <button type="button" id="indWfBackBtn" class="sp-modal-back-btn" onclick="backFromIndividualWorkflow()" title="Back" style="display: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <h3 class="modal-title" id="indWfModalTitle" style="font-size: 15.5px; font-weight: 600; color: #008272; margin: 0;">Individual Workflow</h3>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeIndividualWorkflowModal()" style="color: #008272;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px;">
+        <!-- Dynamic SharePoint Step Bar with Navigation Chevrons -->
+        <div class="sp-step-bar" id="indWfStepBar">
+          <button type="button" class="sp-step-bar-nav-btn" id="indWfStepPrevBtn" onclick="navigateWorkflowStep(-1)" style="display: none;" title="Previous Step">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <span id="indWfStepTitle" style="flex: 1; text-align: left;">Step 1</span>
+          <button type="button" class="sp-step-bar-nav-btn" id="indWfStepNextBtn" onclick="navigateWorkflowStep(1)" style="display: none;" title="Next Step">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Template Name -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Template Name</label>
+          <div class="sp-upload-form-control">
+            <input type="text" class="sp-form-input" id="indWfTemplateName" placeholder="Enter Template Name" value="">
+          </div>
+        </div>
+
+        <!-- Access Level -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Access Level</label>
+          <div class="sp-upload-form-control">
+            <select class="sp-form-input" id="indWfAccessLevel" onchange="handleIndWfAccessLevelChange(this.value)">
+              <option value="">Select...</option>
+              <option value="User Only">User Only</option>
+              <option value="Department">Department</option>
+              <option value="Organization">Organization</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Conditional Branch & Department Container -->
+        <div id="indWfDeptFieldsGroup" style="display: none;">
+          <!-- Branch -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Branch</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="indWfBranch">
+                <option value="Innomick Technologies Corporate HQ" selected>Innomick Technologies Corporate HQ</option>
+                <option value="Innomick Global Innovation Center">Innomick Global Innovation Center</option>
+                <option value="Innomick Regional Solutions Delivery">Innomick Regional Solutions Delivery</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Department -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Department</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="indWfDept">
+                <option value="CEO Office">CEO Office</option>
+                <option value="Facilities" selected>Facilities</option>
+                <option value="Executive Director Office">Executive Director Office</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Central Supply Chain Management">Central Supply Chain Management</option>
+                <option value="Medical Insurance">Medical Insurance</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #f1f5f9; margin: 16px 0;"></div>
+
+        <!-- Step Name -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Step Name</label>
+          <div class="sp-upload-form-control">
+            <input type="text" class="sp-form-input" id="indWfStepName" placeholder="Enter Step Name" value="Step 1">
+          </div>
+        </div>
+
+        <!-- Approver -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Approver</label>
+          <div class="sp-upload-form-control">
+            <select class="sp-form-input" id="indWfApprover">
+              <option value="">Select Approver Name</option>
+              <option value="10th Meeting Room">10th Meeting Room</option>
+              <option value="MD Faisal Ahmed">MD Faisal Ahmed</option>
+              <option value="Mohammed Wasifuddin">Mohammed Wasifuddin</option>
+              <option value="Sayed Asif Ahmed">Sayed Asif Ahmed</option>
+              <option value="Abdul Jabbar">Abdul Jabbar</option>
+              <option value="Nelluri Venkatarao">Nelluri Venkatarao</option>
+              <option value="Sanaa Testing">Sanaa Testing</option>
+              <option value="Oussama">Oussama</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Action</label>
+          <div class="sp-upload-form-control">
+            <input type="text" class="sp-form-input is-readonly" id="indWfAction" value="Review & Approve" disabled>
+          </div>
+        </div>
+
+        <!-- Trigger Mail -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Trigger Mail to the Approver</label>
+          <div class="sp-upload-form-control" style="display: flex; align-items: center;">
+            <label class="switch-toggle">
+              <input type="checkbox" id="indWfTriggerMail" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeIndividualWorkflowModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+        <button type="button" class="btn-teal-outline" id="indWfAddStepBtn" onclick="addWorkflowStep()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Add Step +</button>
+        <button type="button" class="btn-primary-teal" id="indWfSubmitBtn" onclick="submitIndividualWorkflow()" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Group Workflow Modal (Matching Live SharePoint Screenshot 2) -->
+  <div class="modal-overlay" id="groupWorkflowModal">
+    <div class="dms-modal-dialog" style="max-width: 580px; border-radius: 4px;">
+      <div class="modal-header" style="border-bottom: 1px solid #f1f5f9; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center;">
+          <button type="button" id="groupWfBackBtn" class="sp-modal-back-btn" onclick="backFromGroupWorkflow()" title="Back" style="display: none;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+          </button>
+          <h3 class="modal-title" id="groupWfModalTitle" style="font-size: 15.5px; font-weight: 600; color: #008272; margin: 0;">Group Workflow</h3>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeGroupWorkflowModal()" style="color: #008272;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body" style="padding: 20px 24px;">
+        <!-- Template Name -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Template Name</label>
+          <div class="sp-upload-form-control">
+            <input type="text" class="sp-form-input" id="groupWfTemplateName" placeholder="Enter Template Name" value="">
+          </div>
+        </div>
+
+        <!-- Access Level -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Access Level</label>
+          <div class="sp-upload-form-control">
+            <select class="sp-form-input" id="groupWfAccessLevel" onchange="handleGroupWfAccessLevelChange(this.value)">
+              <option value="">Select...</option>
+              <option value="Department">Department</option>
+              <option value="Organization">Organization</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Conditional Branch & Department Container -->
+        <div id="groupWfDeptFieldsGroup" style="display: none;">
+          <!-- Branch -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Branch</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="groupWfBranch">
+                <option value="Innomick Technologies Corporate HQ" selected>Innomick Technologies Corporate HQ</option>
+                <option value="Innomick Global Innovation Center">Innomick Global Innovation Center</option>
+                <option value="Innomick Regional Solutions Delivery">Innomick Regional Solutions Delivery</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Department -->
+          <div class="sp-upload-form-row">
+            <label class="sp-upload-form-label">Department</label>
+            <div class="sp-upload-form-control">
+              <select class="sp-form-input" id="groupWfDept">
+                <option value="CEO Office" selected>CEO Office</option>
+                <option value="Facilities">Facilities</option>
+                <option value="Executive Director Office">Executive Director Office</option>
+                <option value="Information Technology">Information Technology</option>
+                <option value="Central Supply Chain Management">Central Supply Chain Management</option>
+                <option value="Medical Insurance">Medical Insurance</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top: 1px solid #f1f5f9; margin: 16px 0;"></div>
+
+        <!-- Group -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Group</label>
+          <div class="sp-upload-form-control">
+            <select class="sp-form-input" id="groupWfGroup" onchange="handleGroupSelectChange(this.value)">
+              <option value="">Enter Group Name</option>
+              <option value="Test-GM3" selected>Test-GM3</option>
+              <option value="Test-GM5">Test-GM5</option>
+              <option value="CRM">CRM</option>
+              <option value="HSE Committee">HSE Committee</option>
+              <option value="DASMAN staff">DASMAN staff</option>
+              <option value="SharperClinic_CanPrintTransactionReceipt">SharperClinic_CanPrintTransactionReceipt</option>
+              <option value="SG Residential Doctors SASH">SG Residential Doctors SASH</option>
+              <option value="Insurance meeting">Insurance meeting</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Group Members -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Group Members</label>
+          <div class="sp-upload-form-control">
+            <div class="sp-group-members-box" id="groupWfMembersContainer" style="display: flex; flex-wrap: wrap; gap: 8px; min-height: 38px; align-items: center; padding: 4px 8px; background: #fafafa; border: 1px solid #f0f0f0; border-radius: 4px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Additional members Toggle -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Add Additional members</label>
+          <div class="sp-upload-form-control" style="display: flex; align-items: center;">
+            <label class="switch-toggle">
+              <input type="checkbox" id="groupWfAddAdditionalToggle" onchange="toggleAdditionalMembersField(this.checked)">
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Additional Members Row (dynamically shown/hidden) -->
+        <div class="sp-upload-form-row" id="additionalMembersRow" style="display: none;">
+          <label class="sp-upload-form-label">Additional Members</label>
+          <div class="sp-upload-form-control" style="position: relative;">
+            <div class="sp-additional-members-box" onclick="toggleAdditionalMembersDropdown(event)">
+              <div class="sp-chips-container" id="additionalMembersChips">
+                <span class="sp-chips-placeholder" style="color: #64748b; font-size: 13px;">Select Members</span>
+              </div>
+              <div class="sp-chips-controls">
+                <span class="sp-chips-clear-btn" title="Clear all" onclick="clearAllAdditionalMembers(event)">✕</span>
+                <span class="sp-chips-chevron" onclick="toggleAdditionalMembersDropdown(event)">▼</span>
+              </div>
+            </div>
+
+            <!-- Additional Members Dropdown List (Matching Live SharePoint Screenshot 2) -->
+            <div class="sp-additional-members-dropdown" id="additionalMembersDropdown" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Action -->
+        <div class="sp-upload-form-row">
+          <label class="sp-upload-form-label">Action</label>
+          <div class="sp-upload-form-control">
+            <input type="text" class="sp-form-input is-readonly" id="groupWfAction" value="Review & Approve" disabled>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
+        <button type="button" class="btn-secondary" onclick="closeGroupWorkflowModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
+        <button type="button" class="btn-primary-teal" onclick="submitGroupWorkflow()" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exact SharePoint Info: Template Updated Modal Dialog (Matching Live Screenshot) -->
+  <div class="modal-overlay" id="templateUpdatedModal">
+    <div class="sp-info-dialog-card" onclick="event.stopPropagation()">
+      <!-- Dialog Header -->
+      <div class="sp-info-header">
+        <span class="sp-info-header-title">Info</span>
+        <button type="button" class="sp-info-close-btn" onclick="closeTemplateUpdatedModal()" title="Close">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#008272" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Dialog Body -->
+      <div class="sp-info-body">
+        <h3 class="sp-info-title">Template Updated!</h3>
+        <p class="sp-info-subtitle">Do you want to update the Ongoing approvals?</p>
+        
+        <!-- Action Buttons -->
+        <div class="sp-info-btn-row">
+          <button type="button" class="sp-info-btn-no" onclick="handleTemplateUpdatedDecision(false)">No</button>
+          <button type="button" class="sp-info-btn-yes" onclick="handleTemplateUpdatedDecision(true)">Yes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Document Preview Modal / Rich PDF & Office Document Viewer -->
+  <div class="modal-overlay" id="previewModal" onclick="closePreviewModal()">
+    <div class="dms-modal-dialog" onclick="event.stopPropagation()" style="max-width: 960px; width: 92vw; height: 90vh; border-radius: 4px; display: flex; flex-direction: column; overflow: hidden; background: #ffffff;">
+      <!-- Viewer Top Bar -->
+      <div class="modal-header" style="background: #1e293b; color: #fff; padding: 12px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+          <div id="previewModalIcon" style="display: flex; align-items: center; flex-shrink: 0;"></div>
+          <div style="min-width: 0;">
+            <h3 class="modal-title" id="previewModalTitle" style="color: #ffffff; font-size: 15px; font-weight: 600; margin: 0; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Document Preview</h3>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 3px; font-size: 11.5px; color: #94a3b8;">
+              <span id="previewDocCategory">General</span> &bull; 
+              <span id="previewDocDept">Department</span> &bull; 
+              <span id="previewDocVersion" style="color: #38bdf8;">v1.0</span> &bull; 
+              <span id="previewDocStatus" style="color: #4ade80;">Active</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Center Controls: Page Navigation & Zoom -->
+        <div style="display: flex; align-items: center; gap: 10px; background: #0f172a; padding: 5px 14px; border-radius: 4px; font-size: 12px; color: #cbd5e1;">
+          <button type="button" class="viewer-btn" title="Previous Page" onclick="changeViewerPage(-1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <span id="viewerPageIndicator" style="font-weight: 500;">Page 1 of 2</span>
+          <button type="button" class="viewer-btn" title="Next Page" onclick="changeViewerPage(1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <span style="color: #475569;">|</span>
+          <button type="button" class="viewer-btn" title="Zoom Out" onclick="adjustViewerZoom(-0.1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&minus;</button>
+          <span id="viewerZoomIndicator" style="font-weight: 500; min-width: 42px; text-align: center;">100%</span>
+          <button type="button" class="viewer-btn" title="Zoom In" onclick="adjustViewerZoom(0.1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&#43;</button>
+        </div>
+
+        <!-- Right Action Buttons -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+          <button type="button" class="btn-primary-teal" onclick="downloadDocument('current')" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 12.5px; border-radius: 4px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Download
+          </button>
+          <button type="button" class="modal-close-btn" onclick="closePreviewModal()" title="Close Viewer (Esc)" style="color: #94a3b8; background: #334155; border-radius: 4px; padding: 6px 10px; width: auto; height: auto; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Viewer Body / Rendered Canvas -->
+      <div class="modal-body" id="previewModalViewerBody" style="background: #475569; padding: 24px; overflow-y: auto; flex: 1; display: flex; justify-content: center; align-items: flex-start;">
+        <!-- Dynamically populated document sheet -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Version History Modal (Exact SharePoint Replication) -->
+  <div class="modal-overlay" id="versionHistoryModal">
+    <div class="dms-modal-dialog vh-modal-dialog">
+      <div class="modal-header vh-modal-header">
+        <h3 class="modal-title" id="vhDocTitle">Version History</h3>
+        <button class="modal-close-btn" onclick="closeVersionHistoryModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body vh-modal-body" id="vhModalBody">
+        <!-- Rendered dynamically via openVersionHistoryModal() -->
+      </div>
+
+      <div class="modal-footer vh-modal-footer">
+        <button type="button" class="btn-primary-teal" onclick="closeVersionHistoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exact SharePoint Share Modal Dialog (Matching Live Screenshot) -->
+  <div class="modal-overlay" id="manageAccessModal">
+    <div class="sp-share-dialog-card" onclick="event.stopPropagation()">
+      <!-- Dialog Header -->
+      <div class="sp-share-header">
+        <h2 class="sp-share-title" id="shareDocModalTitle">Share "Ref Doc Demo 1.docx"</h2>
+        <div class="sp-share-header-actions">
+          <button class="sp-share-icon-btn" title="Help" onclick="showShareHelpInfo(event)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="1.8">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </button>
+          <button class="sp-share-icon-btn" title="Close" onclick="closeShareModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Recipient Input Box -->
+      <div class="sp-share-recipient-container" id="shareRecipientContainer">
+        <svg class="sp-share-person-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="1.8">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <div class="sp-share-recipient-chips" id="shareRecipientChips"></div>
+        <input 
+          type="text" 
+          id="shareRecipientInput" 
+          class="sp-share-input" 
+          placeholder="Add a name, group, or email" 
+          autocomplete="off"
+          onfocus="focusShareRecipientBox(true)"
+          onblur="setTimeout(() => focusShareRecipientBox(false), 200)"
+          oninput="handleShareRecipientSearch(this.value)"
+          onkeydown="handleShareRecipientKeydown(event)"
+        />
+        
+        <!-- Permission Toggle (Can view / Can edit) -->
+        <div class="sp-share-perm-wrapper">
+          <button class="sp-share-perm-btn" id="sharePermDropdownBtn" onclick="toggleSharePermMenu(event)" title="Permissions">
+            <svg id="sharePermIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="1.8">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          
+          <div class="sp-share-perm-popover" id="sharePermMenu">
+            <div class="sp-share-perm-item" onclick="setSharePermission('edit')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              <span>Can edit</span>
+              <span class="sp-perm-check" id="checkPermEdit" style="display: none;">✓</span>
+            </div>
+            <div class="sp-share-perm-item active" onclick="setSharePermission('view')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span>Can view</span>
+              <span class="sp-perm-check" id="checkPermView">✓</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Autocomplete Suggestions Dropdown -->
+        <div class="sp-share-autocomplete-list" id="shareAutocompleteList" style="display: none;"></div>
+      </div>
+
+      <!-- Message Textarea Box -->
+      <div class="sp-share-message-container" id="shareMessageContainer">
+        <div class="sp-share-message-header">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#616161" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+        </div>
+        <textarea 
+          id="shareMessageInput" 
+          class="sp-share-message-textarea" 
+          placeholder="Add a message" 
+          rows="3"
+        ></textarea>
+        <!-- Copilot Icon in bottom right of textarea -->
+        <button class="sp-copilot-msg-btn" onclick="draftShareMsgWithCopilot()" title="Draft message with Copilot">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <defs>
+              <linearGradient id="copilotShareGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00a4ef"/>
+                <stop offset="35%" stop-color="#2d7d9a"/>
+                <stop offset="70%" stop-color="#ffb900"/>
+                <stop offset="100%" stop-color="#ea4335"/>
+              </linearGradient>
+            </defs>
+            <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#copilotShareGrad)"/>
+            <circle cx="12" cy="12" r="4.5" fill="#ffffff" fill-opacity="0.95"/>
+            <circle cx="12" cy="12" r="2.5" fill="url(#copilotShareGrad)"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Action Row: Left Avatars, Right (Copy link, Gear, Send) -->
+      <div class="sp-share-actions-row">
+        <!-- 3 Overlapping Avatars (People with access) -->
+        <div class="sp-share-avatar-stack" title="People with direct access">
+          <div class="sp-share-avatar-circle" style="background: #008272;">MW</div>
+          <div class="sp-share-avatar-circle" style="background: #0b538c;">SA</div>
+          <div class="sp-share-avatar-circle" style="background: #64748b;">FZ</div>
+        </div>
+
+        <!-- Buttons Group -->
+        <div class="sp-share-btn-group">
+          <!-- Copy link -->
+          <button class="sp-btn-outline-share" id="shareCopyLinkBtn" onclick="copyShareModalLink()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <span id="shareCopyLinkText">Copy link</span>
+          </button>
+
+          <!-- Settings gear icon -->
+          <button class="sp-btn-icon-share" onclick="showShareLinkSettings(event)" title="Link settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+
+          <!-- Send button -->
+          <button class="sp-btn-send-share" id="shareSendBtn" onclick="sendShareInvitation()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+            <span>Send</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Close Button (Exact Match) -->
+      <div class="sp-share-footer">
+        <button class="sp-btn-close-share" onclick="closeShareModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       MICROSOFT 365 / SHAREPOINT HEADER PANELS & PROFILE FLYOUT
+       ========================================================================= -->
+
+  <!-- 1. Copilot Right Side Panel (Screenshot 1) -->
+  <div class="m365-side-panel" id="sidePanelCopilot" style="display: none;">
+    <div class="side-panel-header">
+      <div class="side-panel-title-group">
+        <!-- Colorful Copilot Icon -->
+        <svg class="copilot-logo-svg" width="22" height="22" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="copilotG1" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0078d4"/>
+              <stop offset="35%" stop-color="#2b88d8"/>
+              <stop offset="70%" stop-color="#8764b8"/>
+              <stop offset="100%" stop-color="#ea4335"/>
+            </linearGradient>
+            <linearGradient id="copilotG2" x1="0%" y1="100%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#107c41"/>
+              <stop offset="50%" stop-color="#ffb900"/>
+              <stop offset="100%" stop-color="#f25022"/>
+            </linearGradient>
+          </defs>
+          <path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.19 5.42 3.1 7.24L4 22l3.4-.92C9.09 21.65 10.5 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="url(#copilotG1)"/>
+          <path d="M8 12a4 4 0 0 1 4-4 4 4 0 0 1 4 4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="12" cy="15" r="1.5" fill="#ffffff"/>
+        </svg>
+        <span class="side-panel-title">Copilot</span>
+      </div>
+      <div class="side-panel-header-actions">
+        <button class="panel-icon-btn" title="More options" onclick="showToast('Copilot settings & history');">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="12" r="2"/>
+            <circle cx="19" cy="12" r="2"/>
+            <circle cx="5" cy="12" r="2"/>
+          </svg>
+        </button>
+        <button class="panel-close-btn" onclick="closeHeaderPanel()" title="Close panel">✕</button>
+      </div>
+    </div>
+
+    <div class="side-panel-body copilot-body" id="copilotChatScroll">
+      <div class="copilot-intro" id="copilotIntroSection">
+        <h2 class="copilot-greeting" id="copilotGreetingText">Hello Intranet!</h2>
+        <p class="copilot-subtext">Ask a question or get started with one of these prompts:</p>
+
+        <div class="copilot-prompts-list">
+          <button class="copilot-prompt-pill" onclick="handleCopilotPrompt('How can you help me?')">
+            <span>How can you help me?</span>
+          </button>
+          <button class="copilot-prompt-pill" onclick="handleCopilotPrompt('Summarize recent updates on this site')">
+            <span>Summarize recent updates on this site</span>
+          </button>
+          <button class="copilot-prompt-pill" onclick="handleCopilotPrompt('What information from this site is relevant to me?')">
+            <span>What information from this site is relevant to me?</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Messages stream -->
+      <div class="copilot-messages" id="copilotMessagesList"></div>
+    </div>
+
+    <div class="copilot-footer">
+      <div class="copilot-input-box">
+        <button class="copilot-add-btn" title="Add files or people" onclick="showToast('Attach documents to Copilot prompt');">+</button>
+        <input type="text" id="copilotTextInput" placeholder="Ask questions or type / to add files or people." onkeydown="if(event.key==='Enter') sendCopilotMessage()">
+        <button class="copilot-mic-btn" title="Use microphone" onclick="showToast('Voice typing activated');">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <button class="copilot-send-btn" onclick="sendCopilotMessage()" title="Send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="copilot-disclaimer">AI-generated content may be incorrect.</div>
+    </div>
+  </div>
+
+  <!-- 2. Next Steps Right Side Panel (Screenshot 2) -->
+  <div class="m365-side-panel" id="sidePanelNextSteps" style="display: none;">
+    <div class="side-panel-header">
+      <span class="side-panel-title">Next steps</span>
+      <button class="panel-close-btn" onclick="closeHeaderPanel()" title="Close panel">✕</button>
+    </div>
+
+    <div class="side-panel-body next-steps-body">
+      <!-- 1. Distribute news -->
+      <div class="next-step-card">
+        <div class="next-step-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <line x1="9" y1="10" x2="15" y2="10"/>
+          </svg>
+        </div>
+        <div class="next-step-content">
+          <div class="next-step-title">Distribute news (new)</div>
+          <div class="next-step-desc">Share news to Engage with synced conversations.</div>
+          <a class="next-step-link" onclick="handleNextStepAction('distribute')">Adjust settings</a>
+        </div>
+      </div>
+
+      <!-- 2. Customize your site -->
+      <div class="next-step-card">
+        <div class="next-step-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <line x1="3" y1="9" x2="21" y2="9"/>
+            <line x1="9" y1="21" x2="9" y2="9"/>
+          </svg>
+        </div>
+        <div class="next-step-content">
+          <div class="next-step-title">Customize your site</div>
+          <div class="next-step-desc">Personalize your new site and replace pre-populated images and text.</div>
+          <a class="next-step-link" onclick="handleNextStepAction('customize')">Learn more</a>
+        </div>
+      </div>
+
+      <!-- 3. Upload files -->
+      <div class="next-step-card">
+        <div class="next-step-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="12" y1="18" x2="12" y2="12"/>
+            <polyline points="9 15 12 12 15 15"/>
+          </svg>
+        </div>
+        <div class="next-step-content">
+          <div class="next-step-title">Upload files</div>
+          <div class="next-step-desc">Collaborate on shared content with your team.</div>
+          <a class="next-step-link" onclick="handleNextStepAction('upload')">Upload a document</a>
+        </div>
+      </div>
+
+      <!-- 4. Post news -->
+      <div class="next-step-card">
+        <div class="next-step-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8">
+            <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+            <path d="M18 14h-8"/>
+            <path d="M15 18h-5"/>
+            <path d="M10 6h8v4h-8V6Z"/>
+          </svg>
+        </div>
+        <div class="next-step-content">
+          <div class="next-step-title">Post news</div>
+          <div class="next-step-desc">Communicate with your team by sharing updates and announcements.</div>
+          <a class="next-step-link" onclick="handleNextStepAction('post-news')">Create a news post</a>
+        </div>
+      </div>
+
+      <!-- 5. Change the look -->
+      <div class="next-step-card">
+        <div class="next-step-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"/>
+          </svg>
+        </div>
+        <div class="next-step-content">
+          <div class="next-step-title">Change the look</div>
+          <div class="next-step-desc">Customize the look of your site by updating the theme and logo.</div>
+          <a class="next-step-link" onclick="handleNextStepAction('change-look')">Edit site look</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Submit Feedback Right Side Panel (Screenshot 3) -->
+  <div class="m365-side-panel" id="sidePanelFeedback" style="display: none;">
+    <div class="side-panel-header">
+      <span class="side-panel-title">Submit feedback to Microsoft</span>
+      <button class="panel-close-btn" onclick="closeHeaderPanel()" title="Close panel">✕</button>
+    </div>
+
+    <div class="side-panel-body feedback-body">
+      <div class="feedback-classify-label">Classify your feedback</div>
+
+      <div class="feedback-options-stack">
+        <button class="feedback-type-btn" id="fbBtnCompliment" onclick="selectFeedbackType('compliment')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+          </svg>
+          <span>Give a compliment</span>
+        </button>
+
+        <button class="feedback-type-btn outline" id="fbBtnProblem" onclick="selectFeedbackType('problem')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>Report a problem</span>
+        </button>
+
+        <button class="feedback-type-btn outline" id="fbBtnSuggestion" onclick="selectFeedbackType('suggestion')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/>
+            <line x1="10" y1="14" x2="21" y2="3"/>
+          </svg>
+          <span>Make a suggestion <span style="font-size: 11px;">↗</span></span>
+        </button>
+      </div>
+
+      <!-- Expandable details input -->
+      <div id="feedbackDetailArea" style="display: none; margin-top: 18px;">
+        <label id="feedbackPromptLabel" style="font-size: 13px; font-weight: 600; color: #1e293b; display: block; margin-bottom: 6px;">Tell us more:</label>
+        <textarea id="feedbackCommentInput" placeholder="What did you like or what would you like improved?" rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 8px 10px; font-family: inherit; font-size: 13px; resize: vertical;" oninput="updateFeedbackSubmitState()"></textarea>
+
+        <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: #475569; cursor: pointer;">
+          <input type="checkbox" id="feedbackIncludeEmail" checked>
+          <span>You can contact me about this feedback</span>
+        </label>
+      </div>
+
+      <div class="feedback-disclaimer">
+        <a href="#" onclick="alert('Microsoft Privacy Statement: Your feedback is used to troubleshoot and improve products.'); return false;">Learn about: data use, your rights, contacting you</a>
+      </div>
+    </div>
+
+    <div class="side-panel-footer feedback-footer">
+      <button class="btn-primary" id="btnSubmitFeedback" disabled onclick="submitUserFeedback()">Submit</button>
+      <button class="btn-cancel" onclick="closeHeaderPanel()">Cancel</button>
+    </div>
+  </div>
+
+  <!-- 4. Settings Right Side Panel (Screenshot 4) -->
+  <div class="m365-side-panel" id="sidePanelSettings" style="display: none;">
+    <div class="side-panel-header">
+      <span class="side-panel-title">Settings</span>
+      <button class="panel-close-btn" onclick="closeHeaderPanel()" title="Close panel">✕</button>
+    </div>
+
+    <div class="side-panel-body settings-body">
+      <div class="settings-group-title">SharePoint</div>
+      <ul class="settings-links-list">
+        <li><a onclick="handleSettingsAction('add-page')">Add a page</a></li>
+        <li><a onclick="handleSettingsAction('add-app')">Add an app</a></li>
+        <li><a onclick="handleSettingsAction('site-contents')">Site contents</a></li>
+        <li><a onclick="handleSettingsAction('site-info')">Site information</a></li>
+        <li><a onclick="handleSettingsAction('site-ai')">Site AI</a></li>
+        <li><a onclick="handleSettingsAction('site-permissions')">Site permissions</a></li>
+        <li><a onclick="handleSettingsAction('apply-template')">Apply a site template</a></li>
+        <li><a onclick="handleSettingsAction('site-usage')">Site usage</a></li>
+        <li><a onclick="handleSettingsAction('site-reviews')">Site reviews</a></li>
+        <li><a onclick="handleSettingsAction('site-performance')">Site performance</a></li>
+        <li><a onclick="handleSettingsAction('change-look')">Change the look</a></li>
+        <li><a onclick="handleSettingsAction('site-branding')">Site branding (new)</a></li>
+        <li><a onclick="handleSettingsAction('manage-dashboard')">Manage dashboard</a></li>
+        <li><a onclick="handleSettingsAction('news-distribution')">News distribution settings (new)</a></li>
+      </ul>
+
+      <div class="settings-divider"></div>
+
+      <div class="settings-group-title">Microsoft 365</div>
+      <ul class="settings-links-list">
+        <li><a onclick="handleSettingsAction('view-all')">View all</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 5. Help Right Side Panel -->
+  <div class="m365-side-panel" id="sidePanelHelp" style="display: none;">
+    <div class="side-panel-header">
+      <span class="side-panel-title">Help</span>
+      <button class="panel-close-btn" onclick="closeHeaderPanel()" title="Close panel">✕</button>
+    </div>
+
+    <div class="side-panel-body help-body">
+      <div class="settings-group-title">SharePoint & DMS Help</div>
+      <div style="margin-bottom: 14px;">
+        <input type="text" placeholder="Search help articles..." style="width: 100%; border: 1px solid #cbd5e1; border-radius: 4px; padding: 7px 10px; font-size: 13px;">
+      </div>
+      <ul class="settings-links-list">
+        <li><a onclick="showToast('Help: How to upload documents and trigger workflows');">How to upload documents and trigger workflows</a></li>
+        <li><a onclick="showToast('Help: Configuring Individual and Group approvals');">Configuring Individual and Group approvals</a></li>
+        <li><a onclick="showToast('Help: Tracking pending approvals in Outbox');">Tracking pending approvals in Outbox</a></li>
+        <li><a onclick="showToast('Help: Managing permissions and sharing files');">Managing permissions and sharing files</a></li>
+        <li><a onclick="showToast('Help: Document versioning and restore');">Document versioning and restore</a></li>
+        <li><a onclick="showToast('Help: Contact IT support desk');">Contact IT support desk</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 6. Microsoft 365 Profile Flyout (Screenshot 5) -->
+  <div id="m365ProfileFlyout" class="m365-profile-flyout" style="display: none;" onclick="event.stopPropagation()">
+    <div class="profile-flyout-header">
+      <span class="profile-org-name" id="profileOrgName">Innomick Technologies</span>
+      <a href="#" class="profile-signout-link" onclick="handleProfileSignOut(event)">Sign out</a>
+    </div>
+
+    <div class="profile-flyout-main">
+      <div class="profile-avatar-large" id="profileAvatarLarge">
+        <span id="profileAvatarLetter">I</span>
+      </div>
+      <div class="profile-user-name" id="profileUserName">Intranet Admin</div>
+      <div class="profile-user-email" id="profileUserEmail">admin@innomick.com</div>
+
+      <div class="profile-links-row">
+        <a href="#" class="profile-action-link" onclick="showToast('Opening Microsoft 365 Account settings...'); return false;">View account</a>
+        <a href="#" class="profile-action-link" onclick="showToast('Opening Microsoft 365 Profile...'); return false;">My Microsoft 365 profile</a>
+      </div>
+    </div>
+
+    <div class="profile-flyout-footer">
+      <button class="profile-switch-btn" onclick="togglePersonaPickerFromProfile()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="8.5" cy="7" r="4"/>
+          <line x1="20" y1="8" x2="20" y2="14"/>
+          <line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+        <span>Sign in with a different account</span>
+      </button>
+    </div>
+
+    <!-- Embedded Persona Switcher List (shown when clicking "Sign in with a different account") -->
+    <div id="profilePersonaPicker" style="display: none; border-top: 1px solid #e2e8f0; padding: 10px; background: #f8fafc; max-height: 220px; overflow-y: auto;">
+      <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 6px;">Available Accounts</div>
+      <div id="profilePersonaList"></div>
+    </div>
+  </div>
+
+  <!-- 7. Floating Copilot Badge (Screenshot 5 - Bottom Right) -->
+  <button class="floating-copilot-badge" id="floatingCopilotBadge" onclick="toggleHeaderPanel('copilot')" title="Ask Microsoft Copilot">
+    <svg class="copilot-logo-svg" width="20" height="20" viewBox="0 0 24 24" fill="none">
+      <path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.19 5.42 3.1 7.24L4 22l3.4-.92C9.09 21.65 10.5 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="url(#copilotG1)"/>
+      <path d="M8 12a4 4 0 0 1 4-4 4 4 0 0 1 4 4" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="12" cy="15" r="1.5" fill="#ffffff"/>
+    </svg>
+    <span class="floating-copilot-label">Copilot</span>
+  </button>
+
+  <!-- Global SharePoint File Open Popover Menu (Matching Live SharePoint Behavior) -->
+  <div id="globalFileOpenPopover" class="sp-file-open-popover" style="display: none; position: fixed; z-index: 99999;" onclick="event.stopPropagation()">
+    <div class="sp-popover-item" onclick="handlePopoverOpenInBrowser(event)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#008272" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="2" y1="12" x2="22" y2="12"/>
+        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+      </svg>
+      <span>Open in Browser</span>
+    </div>
+    <div class="sp-popover-item" onclick="handlePopoverOpenInDesktop(event)">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#008272" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+        <line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <span>Open in Desktop App</span>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="data.js?v=20261023_v17"></script>
+  <script src="app.js?v=20261023_v17"></script>
+</body>
+</html>

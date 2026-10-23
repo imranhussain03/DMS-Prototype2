@@ -1,0 +1,19 @@
+{
+  "name": "innomick-dms-prototype",
+  "version": "1.0.0",
+  "description": "Innomick Technologies - Enterprise Document Management System (DMS) Prototype",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "dms",
+    "sharepoint",
+    "document-management",
+    "innomick",
+    "prototype"
+  ],
+  "author": "Innomick Technologies",
+  "license": "ISC"
+}
