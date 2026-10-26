@@ -32,7 +32,7 @@ const AppState = {
     description: ''
   },
   globalSearchQuery: '',
-  activeBranch: 'Innomick Al-Assima Hospital',
+  activeBranch: 'Innomick Hyderabad',
   activeDepartment: 'Information Technology',
   departmentSearchQuery: '',
   hasUnreadInbox: true,
@@ -50,6 +50,33 @@ const AppState = {
   directUploadTempFolder: null,
   directUploadFilterQuery: ''
 };
+
+// Workflow Templates LocalStorage Persistence Key
+const WORKFLOW_TEMPLATES_STORAGE_KEY = 'innomick_dms_workflow_templates';
+
+function loadPersistedWorkflowTemplates() {
+  try {
+    const raw = localStorage.getItem(WORKFLOW_TEMPLATES_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        InnomickData.workflowTemplates = parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('Failed to load persisted workflow templates:', err);
+  }
+}
+
+function persistWorkflowTemplates() {
+  try {
+    if (InnomickData && Array.isArray(InnomickData.workflowTemplates)) {
+      localStorage.setItem(WORKFLOW_TEMPLATES_STORAGE_KEY, JSON.stringify(InnomickData.workflowTemplates));
+    }
+  } catch (err) {
+    console.warn('Failed to persist workflow templates:', err);
+  }
+}
 
 // Document type SVG icons
 function getFileIconSvg(type) {
@@ -453,6 +480,31 @@ function renderCurrentView() {
       container.innerHTML = renderHomeView();
   }
   updateApprovalsLeftBadges();
+
+  // Restore input focus for table column filter or search fields
+  if (window._lastFilterFocus) {
+    const filterInfo = window._lastFilterFocus;
+    requestAnimationFrame(() => {
+      const targetInput = document.querySelector(`input.column-search-input[data-filter-col="${filterInfo.col}"]`);
+      if (targetInput) {
+        targetInput.focus();
+        if (typeof filterInfo.cursor === 'number' && targetInput.setSelectionRange) {
+          targetInput.setSelectionRange(filterInfo.cursor, filterInfo.cursor);
+        }
+      }
+    });
+  } else if (window._lastSearchFocus) {
+    const searchInfo = window._lastSearchFocus;
+    requestAnimationFrame(() => {
+      const targetInput = document.getElementById(searchInfo.id);
+      if (targetInput) {
+        targetInput.focus();
+        if (typeof searchInfo.cursor === 'number' && targetInput.setSelectionRange) {
+          targetInput.setSelectionRange(searchInfo.cursor, searchInfo.cursor);
+        }
+      }
+    });
+  }
 }
 
 // =============================================================================
@@ -1463,7 +1515,16 @@ function renderApproveDocumentView(docId, isViewOnly) {
     }
   }
 
-  const viewOnly = Boolean(isViewOnly || item.isOutbox || (item.id && item.id.startsWith('outbox')) || isOutboxRoute);
+  const viewOnly = Boolean(
+    isViewOnly ||
+    item.isOutbox ||
+    item.isHistory ||
+    (item.id && (item.id.startsWith('outbox') || item.id.startsWith('hist-') || item.id.startsWith('out-hist-'))) ||
+    isOutboxRoute ||
+    AppState.activeApprovalTab === 'history' ||
+    item.status === 'Approved' ||
+    item.status === 'Rejected'
+  );
 
   const reviews = (item.reviews && item.reviews.length > 0) ? item.reviews : [
     {
@@ -1640,8 +1701,8 @@ function openApprovalRemarksModal(actionType, docId) {
     labelEl.innerText = actionType === 'Approve' ? 'Approval Remarks' : `${actionType} Remarks`;
   }
   if (textareaEl) {
-    textareaEl.value = 'ok';
-    textareaEl.placeholder = actionType === 'Approve' ? 'ok' : 'Enter remarks...';
+    textareaEl.value = '';
+    textareaEl.placeholder = 'Enter remarks...';
   }
   if (submitBtn) {
     submitBtn.innerText = 'Submit';
@@ -1668,11 +1729,51 @@ function closeApprovalRemarksModal() {
   }
 }
 
+function publishApprovedDocumentToDepartment(item) {
+  if (!item) return;
+  const branch = AppState.activeBranch || 'Innomick Hyderabad';
+  const dept = item.department || AppState.activeDepartment || 'Information Technology';
+
+  if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
+  if (!InnomickData.departmentSites[branch]) InnomickData.departmentSites[branch] = {};
+  if (!InnomickData.departmentSites[branch][dept]) InnomickData.departmentSites[branch][dept] = [];
+
+  const approvedDoc = {
+    id: item.id || String(Math.floor(400 + Math.random() * 600)),
+    name: item.name || item.documentName || 'Document.docx',
+    type: item.type || ((item.name || '').split('.').pop() || 'docx').toLowerCase(),
+    category: item.category || 'Accreditation Documents',
+    subCategory: item.tagSubCategory || item.subCategory || '-',
+    department: dept,
+    owner: item.owner || item.requestedBy || item.submittedBy || InnomickData.currentUser.name || 'Mohammed Wasifuddin',
+    status: 'Approved',
+    uploadDate: item.uploadDate || item.requestedOn || 'Today',
+    expireDate: item.expireDate || '16 October 2027',
+    stakeHolder: item.stakeholder || item.stakeHolder || 'Executive Office',
+    referenceNumber: item.referenceNumber || 'INM-' + Math.floor(1000 + Math.random() * 9000),
+    vendor: item.vendor || 'Innomick Technologies Ltd.',
+    description: item.description || 'Approved through DMS workflow.',
+    folder: '-',
+    parentFolder: null,
+    location: `${dept} > Approved Documents`,
+    favorite: false
+  };
+
+  if (!InnomickData.departmentSites[branch][dept].some(d => d.id === approvedDoc.id || d.name === approvedDoc.name)) {
+    InnomickData.departmentSites[branch][dept].unshift(approvedDoc);
+  }
+
+  if (!InnomickData.myFiles) InnomickData.myFiles = [];
+  if (!InnomickData.myFiles.some(d => d.id === approvedDoc.id || d.name === approvedDoc.name)) {
+    InnomickData.myFiles.unshift(approvedDoc);
+  }
+}
+
 function submitApprovalRemarksAction() {
   const actionType = AppState.pendingRemarksAction || 'Approve';
   const docId = AppState.pendingRemarksDocId || AppState.activeApprovalDocId || '1084/2042';
   const textareaEl = document.getElementById('approvalRemarksTextarea');
-  const remarkText = textareaEl ? textareaEl.value.trim() || 'ok' : 'ok';
+  const remarkText = textareaEl ? textareaEl.value.trim() || 'Approved' : 'Approved';
 
   let itemIndex = -1;
   if (docId && InnomickData.approvalsInbox) {
@@ -1749,6 +1850,30 @@ function submitApprovalRemarksAction() {
       }
       InnomickData.approvalsHistory.unshift(item);
 
+      // 4. Publish document to department now that approval is complete!
+      publishApprovedDocumentToDepartment(item);
+
+      // 5. Add to Outbox History
+      if (!InnomickData.approvalsOutboxHistory) {
+        InnomickData.approvalsOutboxHistory = [];
+      }
+      const outboxEntry = {
+        ...item,
+        id: 'out-hist-' + Date.now(),
+        status: 'Approved',
+        progressStep: item.progressTotal || 1,
+        approvedOn: 'Just now',
+        completedDate: 'Just now'
+      };
+      InnomickData.approvalsOutboxHistory.unshift(outboxEntry);
+
+      if (InnomickData.approvalsOutbox) {
+        const outboxItem = InnomickData.approvalsOutbox.find(o => o.documentName === item.name || o.id === item.id);
+        if (outboxItem) {
+          outboxItem.status = 'Approved';
+        }
+      }
+
       showToast(`Document "${item.name}" approved successfully with remarks: "${remarkText}"`, 'success');
     } else if (actionType === 'Reject') {
       InnomickData.approvalsInbox.splice(itemIndex, 1);
@@ -1777,7 +1902,7 @@ function submitApprovalRemarksAction() {
 }
 
 function showApprovalHistoryModal(docId) {
-  showToast('Viewing approval version history for this document.', 'info');
+  openVersionHistoryModal(docId);
 }
 
 // =============================================================================
@@ -1921,19 +2046,19 @@ function render13ColumnsTable(docsList, emptyMsg = 'No documents found.', showRo
 
           <!-- 13 Column Search Filter Inputs matching SharePoint -->
           <tr class="filter-row">
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.name || ''}" oninput="setColumnFilter('name', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.category || ''}" oninput="setColumnFilter('category', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.status || ''}" oninput="setColumnFilter('status', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.department || ''}" oninput="setColumnFilter('department', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.referenceNumber || ''}" oninput="setColumnFilter('referenceNumber', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.favorite || ''}" oninput="setColumnFilter('favorite', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.stakeHolder || ''}" oninput="setColumnFilter('stakeHolder', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.owner || ''}" oninput="setColumnFilter('owner', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.subCategory || ''}" oninput="setColumnFilter('subCategory', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.uploadDate || ''}" oninput="setColumnFilter('uploadDate', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.id || ''}" oninput="setColumnFilter('id', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.vendor || ''}" oninput="setColumnFilter('vendor', this.value)"></th>
-            <th><input type="text" class="column-search-input" placeholder="" value="${AppState.columnFilters.expireDate || ''}" oninput="setColumnFilter('expireDate', this.value)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="name" placeholder="" value="${AppState.columnFilters.name || ''}" oninput="setColumnFilter('name', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="category" placeholder="" value="${AppState.columnFilters.category || ''}" oninput="setColumnFilter('category', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="status" placeholder="" value="${AppState.columnFilters.status || ''}" oninput="setColumnFilter('status', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="department" placeholder="" value="${AppState.columnFilters.department || ''}" oninput="setColumnFilter('department', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="referenceNumber" placeholder="" value="${AppState.columnFilters.referenceNumber || ''}" oninput="setColumnFilter('referenceNumber', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="favorite" placeholder="" value="${AppState.columnFilters.favorite || ''}" oninput="setColumnFilter('favorite', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="stakeHolder" placeholder="" value="${AppState.columnFilters.stakeHolder || ''}" oninput="setColumnFilter('stakeHolder', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="owner" placeholder="" value="${AppState.columnFilters.owner || ''}" oninput="setColumnFilter('owner', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="subCategory" placeholder="" value="${AppState.columnFilters.subCategory || ''}" oninput="setColumnFilter('subCategory', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="uploadDate" placeholder="" value="${AppState.columnFilters.uploadDate || ''}" oninput="setColumnFilter('uploadDate', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="id" placeholder="" value="${AppState.columnFilters.id || ''}" oninput="setColumnFilter('id', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="vendor" placeholder="" value="${AppState.columnFilters.vendor || ''}" oninput="setColumnFilter('vendor', this.value, this)"></th>
+            <th><input type="text" class="column-search-input" data-filter-col="expireDate" placeholder="" value="${AppState.columnFilters.expireDate || ''}" oninput="setColumnFilter('expireDate', this.value, this)"></th>
           </tr>
         </thead>
         <tbody>
@@ -2237,7 +2362,7 @@ function renderMyFilesView() {
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" placeholder="Search my files..." oninput="handleSearch(this.value)">
+          <input type="text" id="myFilesSearchInput" placeholder="Search my files..." value="${AppState.globalSearchQuery || ''}" oninput="handleSearch(this.value, this)">
         </div>
 
         <button class="icon-action-btn" title="Refresh" onclick="refreshData()">
@@ -2680,7 +2805,7 @@ function renderDepartmentView() {
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" placeholder="Search" value="${AppState.departmentSearchQuery || ''}" oninput="handleDepartmentSearch(this.value)">
+          <input type="text" id="deptSearchInput" placeholder="Search" value="${AppState.departmentSearchQuery || ''}" oninput="handleDepartmentSearch(this.value, this)">
         </div>
 
         <button class="icon-action-btn" title="Refresh" onclick="refreshData()">
@@ -2989,8 +3114,13 @@ function escapeHtmlDept(text) {
     .replace(/'/g, '&#039;');
 }
 
-function handleDepartmentSearch(val) {
+function handleDepartmentSearch(val, inputEl) {
   AppState.departmentSearchQuery = val;
+  window._lastSearchFocus = {
+    id: inputEl && inputEl.id ? inputEl.id : 'deptSearchInput',
+    cursor: inputEl && typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : (val ? val.length : 0)
+  };
+  window._lastFilterFocus = null;
   renderCurrentView();
 }
 
@@ -3042,7 +3172,7 @@ function renderMyOrganizationView() {
             <circle cx="11" cy="11" r="8"/>
             <line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
-          <input type="text" placeholder="Search" oninput="handleSearch(this.value)">
+          <input type="text" id="orgSearchInput" placeholder="Search" value="${AppState.globalSearchQuery || ''}" oninput="handleSearch(this.value, this)">
         </div>
 
         <button class="icon-action-btn" title="Refresh" onclick="refreshData()">
@@ -3077,8 +3207,13 @@ function renderMyOrganizationView() {
   `;
 }
 
-function setColumnFilter(col, val) {
+function setColumnFilter(col, val, inputEl) {
   AppState.columnFilters[col] = val;
+  window._lastFilterFocus = {
+    col: col,
+    cursor: inputEl && typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : (val ? val.length : 0)
+  };
+  window._lastSearchFocus = null;
   renderCurrentView();
 }
 
@@ -4715,8 +4850,13 @@ function toggleMyFileFavorite(id) {
   }
 }
 
-function handleSearch(query) {
+function handleSearch(query, inputEl) {
   AppState.globalSearchQuery = query;
+  window._lastSearchFocus = {
+    id: inputEl && inputEl.id ? inputEl.id : 'myFilesSearchInput',
+    cursor: inputEl && typeof inputEl.selectionStart === 'number' ? inputEl.selectionStart : (query ? query.length : 0)
+  };
+  window._lastFilterFocus = null;
   renderCurrentView();
 }
 
@@ -4846,6 +4986,21 @@ function openUploadModal(defaultCategory, sourceContext) {
     if (mainTitle) mainTitle.innerText = 'Upload Document';
   }
 
+  // Reset standard text inputs for fresh document upload
+  const subCatInput = document.getElementById('uploadSubCategory');
+  const descInput = document.getElementById('uploadDescription');
+  const stakeInput = document.getElementById('uploadStakeholder');
+  if (subCatInput) subCatInput.value = '';
+  if (descInput) descInput.value = '';
+  if (stakeInput) stakeInput.value = '';
+
+  const nameEl = document.getElementById('uploadAttachedFileName');
+  const iconSpan = document.getElementById('uploadAttachedFileIcon');
+  if (!AppState.attachedLocalFile) {
+    if (nameEl) nameEl.textContent = 'Choose a file...';
+    if (iconSpan) iconSpan.innerHTML = getFileIconSvg('docx');
+  }
+
   // Populate Categories
   const catSelect = document.getElementById('uploadCategorySelect');
   if (catSelect) {
@@ -4862,7 +5017,7 @@ function openUploadModal(defaultCategory, sourceContext) {
   const deptEl = document.getElementById('uploadDeptBadge');
   const dateEl = document.getElementById('uploadDateDisplay');
   if (ownerEl) ownerEl.innerText = InnomickData.currentUser.name || 'Mohammed Wasifuddin';
-  if (deptEl) deptEl.innerText = AppState.activeDepartment || 'Hospital Director Office';
+  if (deptEl) deptEl.innerText = AppState.activeDepartment || 'Information Technology';
   if (dateEl) {
     const now = new Date();
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -4900,6 +5055,7 @@ function handleFileChosen(input) {
 }
 
 // Dynamic Category Metadata Fields (Press Releases, Accreditation, Audit, Budget, etc.)
+// Clean fields with blank values and helpful placeholders
 function handleUploadCategoryChange(category) {
   const container = document.getElementById('dynamicCategoryFieldsContainer');
   const permRow = document.getElementById('uploadFilePermissionRow');
@@ -4908,7 +5064,6 @@ function handleUploadCategoryChange(category) {
   if (!container) return;
 
   if (category === 'Assessment Results') {
-    // Exact match with live SharePoint screenshot uat_assessment_results_reference.png
     container.innerHTML = `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Target Audience <span style="color: #dc2626;">*</span></label>
@@ -4927,27 +5082,27 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Training/Workshop Name <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_trainingName" placeholder="Enter Training/Workshop Name" value="Clinical Systems EHR & Security Protocol Training">
+          <input type="text" class="sp-form-input" id="dyn_trainingName" placeholder="Enter Training/Workshop Name" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Trainer/Facilitator <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_trainer" placeholder="Enter Trainer/Facilitator" value="Dr. Tariq Al-Mansoor">
+          <input type="text" class="sp-form-input" id="dyn_trainer" placeholder="Enter Trainer/Facilitator" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Session Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_sessionDate" value="2026-10-16">
+          <input type="date" class="sp-form-input" id="dyn_sessionDate" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Completion Status <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_completionStatus">
-            <option value="" disabled>Select Completion Status</option>
-            <option value="Completed" selected>Completed</option>
+            <option value="" disabled selected>Select Completion Status</option>
+            <option value="Completed">Completed</option>
             <option value="In Progress">In Progress</option>
             <option value="Pending Assessment">Pending Assessment</option>
             <option value="Passed with Distinction">Passed with Distinction</option>
@@ -4957,38 +5112,37 @@ function handleUploadCategoryChange(category) {
       </div>
     `;
   } else if (category === 'Asset Inventories') {
-    // Exact match with live SharePoint screenshot uat_asset_inventories_reference.png
     container.innerHTML = `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Asset/Facility Name <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_assetName" placeholder="Enter Asset/Facility Name" value="Main Server Rack #4 & Core Switchgear">
+          <input type="text" class="sp-form-input" id="dyn_assetName" placeholder="Enter Asset/Facility Name" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Location <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_location" placeholder="Enter Location" value="Innomick Corporate - Primary Data Center">
+          <input type="text" class="sp-form-input" id="dyn_location" placeholder="Enter Location" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Request ID <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_requestId" placeholder="Enter Request ID" value="REQ-2026-9921">
+          <input type="text" class="sp-form-input" id="dyn_requestId" placeholder="Enter Request ID" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Incident/Request Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_incidentDate" value="2026-10-16">
+          <input type="date" class="sp-form-input" id="dyn_incidentDate" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Resolution Status <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_resolutionStatus">
-            <option value="" disabled>Select Resolution Status</option>
-            <option value="Resolved / Deployed" selected>Resolved / Deployed</option>
+            <option value="" disabled selected>Select Resolution Status</option>
+            <option value="Resolved / Deployed">Resolved / Deployed</option>
             <option value="Under Inspection">Under Inspection</option>
             <option value="In Inventory / Available">In Inventory / Available</option>
             <option value="Maintenance Required">Maintenance Required</option>
@@ -4998,20 +5152,19 @@ function handleUploadCategoryChange(category) {
       </div>
     `;
   } else if (category === 'Audit Documents') {
-    // Exact match with live SharePoint screenshot uat_audit_documents_reference.png
     container.innerHTML = `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Amount <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_amount" placeholder="Enter Amount" value="14,500 KWD">
+          <input type="text" class="sp-form-input" id="dyn_amount" placeholder="Enter Amount" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Payment Status <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_paymentStatus">
-            <option value="" disabled>Select Payment Status</option>
-            <option value="Paid" selected>Paid</option>
+            <option value="" disabled selected>Select Payment Status</option>
+            <option value="Paid">Paid</option>
             <option value="Pending Payment">Pending Payment</option>
             <option value="Partially Paid">Partially Paid</option>
             <option value="Under Review / Audit Clearance">Under Review / Audit Clearance</option>
@@ -5022,19 +5175,19 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Approval Number <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_approvalNumber" placeholder="Enter Approval Number" value="APV-88412-AUD">
+          <input type="text" class="sp-form-input" id="dyn_approvalNumber" placeholder="Enter Approval Number" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Fiscal Period/Year <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_fiscalPeriod" placeholder="Enter Fiscal Period/Year" value="FY-2026-Q3">
+          <input type="text" class="sp-form-input" id="dyn_fiscalPeriod" placeholder="Enter Fiscal Period/Year" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Vendor <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_vendor" placeholder="Enter Vendor" value="Innomick Technologies Ltd.">
+          <input type="text" class="sp-form-input" id="dyn_vendor" placeholder="Enter Vendor" value="">
         </div>
       </div>
     `;
@@ -5043,20 +5196,21 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Version Number <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_version" value="1.0" placeholder="Enter Version Number">
+          <input type="text" class="sp-form-input" id="dyn_version" value="" placeholder="Enter Version Number">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Campaign/Project Name <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_projectName" value="Innomick Cloud Architecture Transformation Initiative" placeholder="Enter Campaign/Project Name">
+          <input type="text" class="sp-form-input" id="dyn_projectName" value="" placeholder="Enter Campaign/Project Name">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Target Audience <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_audience">
-            <option value="General Public & Media Press" selected>General Public & Media Press</option>
+            <option value="" disabled selected>Select Target Audience</option>
+            <option value="General Public & Media Press">General Public & Media Press</option>
             <option value="Engineering & IT Professionals">Engineering & IT Professionals</option>
             <option value="Executive Board & Directors">Executive Board & Directors</option>
             <option value="Internal Operations & IT">Internal Operations & IT</option>
@@ -5067,13 +5221,13 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Event/Launch Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_launchDate" value="2026-10-16">
+          <input type="date" class="sp-form-input" id="dyn_launchDate" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Key Messages <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_keyMessages" value="Innomick Enterprise Platform & Quality Architecture Release" placeholder="Enter Key Messages">
+          <input type="text" class="sp-form-input" id="dyn_keyMessages" value="" placeholder="Enter Key Messages">
         </div>
       </div>
     `;
@@ -5082,32 +5236,33 @@ function handleUploadCategoryChange(category) {
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Review Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_reviewDate" value="2026-10-23">
+          <input type="date" class="sp-form-input" id="dyn_reviewDate" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Audit/Inspection Date <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_auditInspectionDate" value="2026-10-23">
+          <input type="date" class="sp-form-input" id="dyn_auditInspectionDate" value="">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Inspection Area <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_inspectionArea" value="ok" placeholder="Enter Inspection Area">
+          <input type="text" class="sp-form-input" id="dyn_inspectionArea" value="" placeholder="Enter Inspection Area">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Findings Summary <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_findingsSummary" value="ok" placeholder="Enter Findings Summary">
+          <input type="text" class="sp-form-input" id="dyn_findingsSummary" value="" placeholder="Enter Findings Summary">
         </div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Action Status <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_actionStatus">
-            <option value="Not Started" selected>Not Started</option>
+            <option value="" disabled selected>Select Action Status</option>
+            <option value="Not Started">Not Started</option>
             <option value="Compliant / Cleared">Compliant / Cleared</option>
             <option value="Pending Review">Pending Review</option>
             <option value="Follow-up Action Required">Follow-up Action Required</option>
@@ -5121,28 +5276,29 @@ function handleUploadCategoryChange(category) {
     container.innerHTML = `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Cost Center <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_costCenter" value="CC-401 Healthcare Operations" placeholder="Enter Cost Center"></div>
+        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_costCenter" value="" placeholder="Enter Cost Center"></div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Allocated Budget <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_budgetAmount" value="75,000 KWD" placeholder="Enter Allocated Budget"></div>
+        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_budgetAmount" value="" placeholder="Enter Allocated Budget"></div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Approving Authority <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_approver" value="Corporate Financial Oversight Board" placeholder="Enter Approving Authority"></div>
+        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_approver" value="" placeholder="Enter Approving Authority"></div>
       </div>
     `;
   } else {
     container.innerHTML = `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Reference Code <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_genericRef" value="DOC-2026-INNOMICK" placeholder="Enter Reference Code"></div>
+        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_genericRef" value="" placeholder="Enter Reference Code"></div>
       </div>
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">Review Frequency <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           <select class="sp-form-input" id="dyn_reviewFreq">
-            <option value="Annual Review" selected>Annual Review</option>
+            <option value="" disabled selected>Select Review Frequency</option>
+            <option value="Annual Review">Annual Review</option>
             <option value="Semi-Annual">Semi-Annual</option>
             <option value="Quarterly">Quarterly</option>
           </select>
@@ -5397,55 +5553,140 @@ function openDirectUploadFolderDrawer() {
   if (backdrop) backdrop.style.display = 'block';
 }
 
+const DIRECT_UPLOAD_FOLDER_TREE = {
+  "Hospital Director Office": [
+    {
+      name: "Testing",
+      subfolders: ["2026 Q3 Audits", "Board Resolutions", "Inspection Briefs"]
+    },
+    {
+      name: "Office Files",
+      subfolders: ["Directives", "Executive Correspondence", "Vendor Contracts"]
+    },
+    {
+      name: "Direct Uploads",
+      subfolders: ["General", "Urgent Clearance"]
+    },
+    {
+      name: "Test",
+      subfolders: ["Sandbox Files"]
+    }
+  ],
+  "Information Technology": [
+    {
+      name: "test",
+      subfolders: ["Network Configurations", "Sprint Releases"]
+    },
+    {
+      name: "CIO Office",
+      subfolders: ["Architecture Standards", "Cybersecurity Reviews", "Vendor RFPs"]
+    },
+    {
+      name: "Direct Uploads",
+      subfolders: ["Quick Submissions", "Server Patch Logs"]
+    }
+  ]
+};
+
+function toggleDirectDrawerFolderExpand(folderName, event) {
+  if (event) {
+    event.stopPropagation();
+  }
+  if (!AppState.directDrawerExpandedFolders) {
+    AppState.directDrawerExpandedFolders = {};
+  }
+  AppState.directDrawerExpandedFolders[folderName] = !AppState.directDrawerExpandedFolders[folderName];
+  renderDirectDrawerFoldersList();
+}
+
 function renderDirectDrawerFoldersList() {
   const listEl = document.getElementById('directDrawerFoldersList');
   if (!listEl) return;
 
-  let dept = AppState.activeDepartment || 'Hospital Director Office';
-  let branch = AppState.activeBranch || 'Innomick Al-Ahmadi Hospital';
-
-  let folders = [];
-  if (DIRECT_UPLOAD_FOLDER_MAP[dept]) {
-    folders = [...DIRECT_UPLOAD_FOLDER_MAP[dept]];
-  } else if (dept && (dept.toLowerCase().includes('information') || dept.toLowerCase().includes('it') || dept.toLowerCase().includes('technology'))) {
-    folders = ["test", "CIO Office", "Direct Uploads"];
-  } else {
-    folders = ["Testing", "Office Files", "Test", "Direct Uploads"];
+  if (!AppState.directDrawerExpandedFolders) {
+    AppState.directDrawerExpandedFolders = {};
   }
 
-  // Also include any folders existing in departmentSites
-  const deptDocs = (InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) || [];
-  deptDocs.forEach(d => {
-    if (d.isFolder && d.name && !folders.includes(d.name)) {
-      folders.push(d.name);
-    }
-  });
+  let dept = AppState.activeDepartment || 'Information Technology';
+  const treeList = DIRECT_UPLOAD_FOLDER_TREE[dept] || [
+    { name: "Testing", subfolders: ["2026 Q3 Audits", "Board Resolutions"] },
+    { name: "Office Files", subfolders: ["Executive Correspondence", "Vendor Contracts"] },
+    { name: "Direct Uploads", subfolders: ["General"] }
+  ];
 
+  let filteredNodes = treeList;
   if (AppState.directUploadFilterQuery) {
     const q = AppState.directUploadFilterQuery.toLowerCase();
-    folders = folders.filter(f => f.toLowerCase().includes(q));
+    filteredNodes = treeList.filter(node => {
+      const matchParent = node.name.toLowerCase().includes(q);
+      const matchChild = (node.subfolders || []).some(sub => sub.toLowerCase().includes(q));
+      return matchParent || matchChild;
+    });
   }
 
-  if (folders.length === 0) {
+  if (filteredNodes.length === 0) {
     listEl.innerHTML = `<div style="font-size: 13px; color: #94a3b8; padding: 12px 6px;">No folders found matching filter.</div>`;
     return;
   }
 
-  listEl.innerHTML = folders.map(f => {
-    const isSelected = AppState.directUploadTempFolder === f;
+  listEl.innerHTML = filteredNodes.map(node => {
+    const hasSubs = node.subfolders && node.subfolders.length > 0;
+    const isExpanded = Boolean(AppState.directDrawerExpandedFolders[node.name] || AppState.directUploadFilterQuery);
+    const isParentSelected = AppState.directUploadTempFolder === node.name;
+
     return `
-      <div class="direct-drawer-folder-item ${isSelected ? 'selected' : ''}" onclick="selectDirectDrawerFolder('${f.replace(/'/g, "\\'")}')">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${isSelected ? '#008272' : '#64748b'}" stroke-width="2">
-          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-        </svg>
-        <span style="font-size: 13.5px; font-weight: ${isSelected ? '600' : '500'};">${f}</span>
+      <div class="direct-drawer-folder-group" style="margin-bottom: 4px;">
+        <div class="direct-drawer-folder-item ${isParentSelected ? 'selected' : ''}" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 4px; cursor: pointer; transition: background 0.15s; border: 1px solid ${isParentSelected ? '#008272' : 'transparent'}; background: ${isParentSelected ? '#e6f7f4' : 'transparent'};" onclick="selectDirectDrawerFolder('${node.name.replace(/'/g, "\\'")}', true)">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${hasSubs ? `
+              <span onclick="toggleDirectDrawerFolderExpand('${node.name.replace(/'/g, "\\'")}', event)" style="width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; color: #64748b; font-size: 11px; cursor: pointer; transform: ${isExpanded ? 'rotate(90deg)' : 'none'}; transition: transform 0.15s;">
+                &#9658;
+              </span>
+            ` : `<span style="width: 18px;"></span>`}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="${isParentSelected ? '#008272' : '#cbd5e1'}" stroke="${isParentSelected ? '#008272' : '#64748b'}" stroke-width="1.5">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span style="font-size: 13.5px; font-weight: ${isParentSelected ? '600' : '500'}; color: ${isParentSelected ? '#008272' : '#1e293b'};">${node.name}</span>
+          </div>
+          ${isParentSelected ? `<span style="color: #008272; font-weight: bold; font-size: 13px;">&check;</span>` : ''}
+        </div>
+
+        ${hasSubs && isExpanded ? `
+          <div class="direct-drawer-subfolder-list" style="margin-left: 28px; border-left: 1.5px dashed #cbd5e1; padding-left: 8px; margin-top: 2px;">
+            ${node.subfolders.map(sub => {
+              const fullSubPath = `${node.name} > ${sub}`;
+              const isSubSelected = AppState.directUploadTempFolder === fullSubPath || AppState.directUploadTempFolder === sub;
+              return `
+                <div class="direct-drawer-subfolder-item ${isSubSelected ? 'selected' : ''}" style="display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-radius: 4px; cursor: pointer; transition: background 0.15s; margin-bottom: 2px; border: 1px solid ${isSubSelected ? '#008272' : 'transparent'}; background: ${isSubSelected ? '#e6f7f4' : 'transparent'};" onclick="selectDirectDrawerSubfolder('${node.name.replace(/'/g, "\\'")}', '${sub.replace(/'/g, "\\'")}', event)">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="${isSubSelected ? '#008272' : '#e2e8f0'}" stroke="${isSubSelected ? '#008272' : '#64748b'}" stroke-width="1.5">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    <span style="font-size: 12.5px; font-weight: ${isSubSelected ? '600' : '400'}; color: ${isSubSelected ? '#008272' : '#334155'};">${sub}</span>
+                  </div>
+                  ${isSubSelected ? `<span style="color: #008272; font-weight: bold; font-size: 12px;">&check;</span>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>
+        ` : ''}
       </div>
     `;
   }).join('');
 }
 
-function selectDirectDrawerFolder(folderName) {
+function selectDirectDrawerFolder(folderName, toggleExpand = false) {
   AppState.directUploadTempFolder = folderName;
+  if (toggleExpand) {
+    if (!AppState.directDrawerExpandedFolders) AppState.directDrawerExpandedFolders = {};
+    AppState.directDrawerExpandedFolders[folderName] = true;
+  }
+  renderDirectDrawerFoldersList();
+}
+
+function selectDirectDrawerSubfolder(parentFolder, subfolder, event) {
+  if (event) event.stopPropagation();
+  AppState.directUploadTempFolder = `${parentFolder} > ${subfolder}`;
   renderDirectDrawerFoldersList();
 }
 
@@ -5541,13 +5782,13 @@ function executeDirectUploadConfirm() {
 }
 
 function addDocumentToDepartmentAndShowSuccess(doc, successMessage) {
-  let branch = AppState.activeBranch || 'Innomick Al-Assima Hospital';
+  let branch = AppState.activeBranch || 'Innomick Hyderabad';
   let dept = AppState.activeDepartment || 'Information Technology';
 
-  const isAhmadi = branch.includes('Ahmadi') || dept === 'Hospital Director Office';
-  const canonicalBranch = isAhmadi ? 'Innomick Al-Ahmadi Hospital' : 'Innomick Al-Assima Hospital';
-  const canonicalDept = isAhmadi ? 'Hospital Director Office' : 'Information Technology';
-  const aliasBranch = isAhmadi ? 'Al-Salam Al-Ahmadi Hospital' : 'Al-Salam Al-Assima Hospital';
+  const isDelhi = branch.includes('Delhi');
+  const canonicalBranch = isDelhi ? 'Innomick Delhi' : 'Innomick Hyderabad';
+  const canonicalDept = dept;
+  const aliasBranch = isDelhi ? 'Al-Salam Al-Assima Hospital' : 'Al-Salam Al-Ahmadi Hospital';
 
   // Make sure department object exists
   if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
@@ -5576,20 +5817,32 @@ function addDocumentToDepartmentAndShowSuccess(doc, successMessage) {
     parentFolder: targetFolder && targetFolder !== '-' ? targetFolder : null,
     location: doc.location || `${canonicalDept} > Direct Uploads > ${targetFolder || ''}`,
     favorite: false,
-    reviewDate: doc.reviewDate || '23-10-2026',
-    auditInspectionDate: doc.auditInspectionDate || '23-10-2026',
-    inspectionArea: doc.inspectionArea || 'ok',
-    findingsSummary: doc.findingsSummary || 'ok',
+    reviewDate: doc.reviewDate || '',
+    auditInspectionDate: doc.auditInspectionDate || '',
+    inspectionArea: doc.inspectionArea || '',
+    findingsSummary: doc.findingsSummary || '',
     actionStatus: doc.actionStatus || 'Not Started'
   };
 
-  // Add at top of department list!
-  InnomickData.departmentSites[canonicalBranch][canonicalDept].unshift(deptDoc);
+  // Add at top of department list if not already present
+  if (!InnomickData.departmentSites[canonicalBranch][canonicalDept].some(d => d.id === deptDoc.id || d.name === deptDoc.name)) {
+    InnomickData.departmentSites[canonicalBranch][canonicalDept].unshift(deptDoc);
+  }
 
-  // Also add to alias branch if it exists
-  if (!InnomickData.departmentSites[aliasBranch]) InnomickData.departmentSites[aliasBranch] = {};
-  if (!InnomickData.departmentSites[aliasBranch][canonicalDept]) InnomickData.departmentSites[aliasBranch][canonicalDept] = [];
-  InnomickData.departmentSites[aliasBranch][canonicalDept].unshift(deptDoc);
+  // Also add to alias branch only if it exists and is a distinct array reference
+  if (InnomickData.departmentSites[aliasBranch] && 
+      InnomickData.departmentSites[aliasBranch][canonicalDept] &&
+      InnomickData.departmentSites[aliasBranch][canonicalDept] !== InnomickData.departmentSites[canonicalBranch][canonicalDept]) {
+    if (!InnomickData.departmentSites[aliasBranch][canonicalDept].some(d => d.id === deptDoc.id || d.name === deptDoc.name)) {
+      InnomickData.departmentSites[aliasBranch][canonicalDept].unshift(deptDoc);
+    }
+  }
+
+  // Ensure uploaded document appears in myFiles with all 13 properties
+  if (!InnomickData.myFiles) InnomickData.myFiles = [];
+  if (!InnomickData.myFiles.some(d => d.id === deptDoc.id || d.name === deptDoc.name)) {
+    InnomickData.myFiles.unshift(deptDoc);
+  }
 
   // If uploaded to a folder, navigate the view to that folder so the file is seen in it!
   if (deptDoc.parentFolder) {
@@ -5597,8 +5850,16 @@ function addDocumentToDepartmentAndShowSuccess(doc, successMessage) {
   }
 
   // Also add to recentDocuments and allFiles for home view
-  if (InnomickData.recentDocuments) InnomickData.recentDocuments.unshift(deptDoc);
-  if (InnomickData.allFiles) InnomickData.allFiles.unshift(deptDoc);
+  if (InnomickData.recentDocuments) {
+    if (!InnomickData.recentDocuments.some(d => d.id === deptDoc.id || d.name === deptDoc.name)) {
+      InnomickData.recentDocuments.unshift(deptDoc);
+    }
+  }
+  if (InnomickData.allFiles) {
+    if (!InnomickData.allFiles.some(d => d.id === deptDoc.id || d.name === deptDoc.name)) {
+      InnomickData.allFiles.unshift(deptDoc);
+    }
+  }
 
   // Re-render current view so new row is visible immediately
   renderCurrentView();
@@ -6066,6 +6327,40 @@ function submitSelectedWorkflow() {
     status: 'In Review'
   });
 
+  let reviews = [];
+  if (isGroup) {
+    const groupMembers = (tpl && tpl.groupMembers && tpl.groupMembers.length > 0)
+      ? tpl.groupMembers
+      : (GROUP_MEMBERS_MAP[assignedEntity] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin']);
+    reviews = groupMembers.map((member, idx) => ({
+      stepName: `Step ${idx + 1} - Group Review`,
+      approverName: `Approval by ${member}`,
+      approverFullName: member,
+      status: 'pending',
+      comments: 'No User comments to view'
+    }));
+  } else if (tpl && tpl.steps && tpl.steps.length > 0) {
+    reviews = tpl.steps.map((st, idx) => ({
+      stepName: st.stepName || `Step ${idx + 1}`,
+      approverName: `Approval by ${st.approver || 'Approver'}`,
+      approverFullName: st.approver || 'Approver',
+      status: idx === 0 ? 'pending' : 'waiting',
+      comments: 'No User comments to view'
+    }));
+  } else {
+    reviews = [
+      {
+        stepName: 'Step 1',
+        approverName: `Approval by ${assignedEntity}`,
+        approverFullName: assignedEntity,
+        status: 'pending',
+        comments: 'No User comments to view'
+      }
+    ];
+  }
+
+  doc.status = 'In Review';
+
   // Add to Inbox for the primary approver
   InnomickData.approvalsInbox.unshift({
     id: 'app-' + Date.now(),
@@ -6073,9 +6368,9 @@ function submitSelectedWorkflow() {
     workflowType: isGroup ? 'GRP' : 'IND',
     category: doc.category || 'Accreditation Documents',
     department: doc.department || 'Information Technology',
-    status: isGroup ? 'Approval Pending' : 'wasif',
+    status: isGroup ? 'Approval Pending' : (assignedEntity ? assignedEntity.split(' ')[0].toLowerCase() : 'pending'),
     progressStep: 0,
-    progressTotal: 1,
+    progressTotal: reviews.length,
     requestedBy: InnomickData.currentUser.name || 'Mohammed Wasifuddin',
     requestedOn: doc.uploadDate || '22 Oct 2026',
     group: isGroup ? (tpl ? (tpl.groupName || tpl.name) : 'Test-GM3') : '-',
@@ -6086,14 +6381,7 @@ function submitSelectedWorkflow() {
     description: doc.description || '-',
     stakeholder: doc.stakeHolder || '-',
     vendor: doc.vendor || '-',
-    reviews: [
-      {
-        approverName: isGroup ? 'Approval by Wasif' : 'wasif',
-        approverFullName: 'Mohammed Wasifuddin',
-        status: 'pending',
-        comments: 'No User comments to view'
-      }
-    ],
+    reviews: reviews,
     documentName: doc.name,
     submittedBy: InnomickData.currentUser.name,
     currentStage: stageDescription,
@@ -6123,7 +6411,7 @@ function submitSelectedWorkflow() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
-  addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
+  showInfoSuccessModal('Successfully submitted !');
 }
 
 // Back to Step 2 (< Select Workflow)
@@ -6337,6 +6625,30 @@ function executeWorkflowUploadSubmit() {
     status: 'In Review'
   });
 
+  let reviews = [];
+  if (AppState.activeWorkflowType === 'group') {
+    const groupMembers = GROUP_MEMBERS_MAP[selectedEntity] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin'];
+    reviews = groupMembers.map((member, idx) => ({
+      stepName: `Step ${idx + 1} - Group Review`,
+      approverName: `Approval by ${member}`,
+      approverFullName: member,
+      status: 'pending',
+      comments: 'No User comments to view'
+    }));
+  } else {
+    reviews = [
+      {
+        stepName: 'Step 1',
+        approverName: `Approval by ${selectedEntity}`,
+        approverFullName: selectedEntity,
+        status: 'pending',
+        comments: 'No User comments to view'
+      }
+    ];
+  }
+
+  doc.status = 'In Review';
+
   // Add to Inbox for the approver
   InnomickData.approvalsInbox.unshift({
     id: 'app-' + Date.now(),
@@ -6344,9 +6656,9 @@ function executeWorkflowUploadSubmit() {
     workflowType: AppState.activeWorkflowType === 'group' ? 'GRP' : 'IND',
     category: doc.category || 'Accreditation Documents',
     department: doc.department || 'Information Technology',
-    status: AppState.activeWorkflowType === 'group' ? 'Approval Pending' : 'wasif',
+    status: AppState.activeWorkflowType === 'group' ? 'Approval Pending' : (selectedEntity ? selectedEntity.split(' ')[0].toLowerCase() : 'pending'),
     progressStep: 0,
-    progressTotal: 1,
+    progressTotal: reviews.length,
     requestedBy: InnomickData.currentUser.name || 'Mohammed Wasifuddin',
     requestedOn: doc.uploadDate || '22 Oct 2026',
     group: AppState.activeWorkflowType === 'group' ? (selectedEntity || 'Test-GM3') : '-',
@@ -6357,14 +6669,7 @@ function executeWorkflowUploadSubmit() {
     description: doc.description || '-',
     stakeholder: doc.stakeHolder || '-',
     vendor: doc.vendor || '-',
-    reviews: [
-      {
-        approverName: AppState.activeWorkflowType === 'group' ? `Approval by ${selectedEntity}` : 'wasif',
-        approverFullName: selectedEntity || 'Mohammed Wasifuddin',
-        status: 'pending',
-        comments: 'No User comments to view'
-      }
-    ],
+    reviews: reviews,
     documentName: doc.name,
     submittedBy: InnomickData.currentUser.name,
     currentStage: `${actionName} (${selectedEntity})`,
@@ -6394,7 +6699,7 @@ function executeWorkflowUploadSubmit() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
-  addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
+  showInfoSuccessModal('Successfully submitted !');
 }
 
 // =============================================================================
@@ -6682,9 +6987,8 @@ function toggleM365ProfileFlyout(event) {
     if (avatarLetter) avatarLetter.innerText = cur.avatar || cur.name.charAt(0);
     if (orgName) orgName.innerText = 'Innomick Technologies';
 
-    // Hide embedded persona list initially
-    const picker = document.getElementById('profilePersonaPicker');
-    if (picker) picker.style.display = 'none';
+    // Item 22: Immediately render grouped personas in Switch User (Demo) panel
+    renderProfilePersonaList();
 
     flyout.style.display = 'block';
   }
@@ -6709,26 +7013,48 @@ function togglePersonaPickerFromProfile() {
 }
 
 function renderProfilePersonaList() {
-  const container = document.getElementById('profilePersonaList');
+  const container = document.getElementById('profilePersonaGroupedList') || document.getElementById('profilePersonaList');
   if (!container) return;
 
   const personas = InnomickData.availablePersonas || [];
-  const currentId = InnomickData.currentUser.id || 'intranet';
+  const currentId = (InnomickData.currentUser && InnomickData.currentUser.id) || 'wasif';
 
-  container.innerHTML = personas.map(p => `
-    <div onclick="switchUserPersona('${p.id}')" style="display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 4px; cursor: pointer; transition: background 0.15s; background: ${p.id === currentId ? '#f0fdfa' : '#ffffff'}; margin-bottom: 4px; border: 1px solid ${p.id === currentId ? '#99f6e4' : '#e2e8f0'};" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${p.id === currentId ? '#f0fdfa' : '#ffffff'}'">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <div style="width: 28px; height: 28px; border-radius: 50%; background: ${p.id === currentId ? '#008272' : '#64748b'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px;">
-          ${p.avatar}
-        </div>
-        <div>
-          <strong style="display: block; font-size: 12.5px; color: #1e293b;">${p.name}</strong>
-          <span style="font-size: 10.5px; color: #64748b;">${p.department} &bull; <em style="color: #008272;">${p.role}</em></span>
-        </div>
+  // Group personas by roleGroup (Item 22: Switch User Demo panel matching CliniPack)
+  const groups = {};
+  personas.forEach(p => {
+    const grp = p.roleGroup || 'Other Roles';
+    if (!groups[grp]) groups[grp] = [];
+    groups[grp].push(p);
+  });
+
+  let html = '<div style="font-size: 11px; color: #64748b; margin-bottom: 8px;">Select a user to view from their perspective</div>';
+  Object.keys(groups).forEach(groupName => {
+    const count = groups[groupName].length;
+    html += `
+      <div style="font-size: 10px; font-weight: 700; color: #008272; text-transform: uppercase; margin: 10px 0 4px 2px; letter-spacing: 0.5px; display: flex; justify-content: space-between;">
+        <span>${groupName.toUpperCase()} (${count})</span>
       </div>
-      ${p.id === currentId ? '<span style="color: #008272; font-weight: bold; font-size: 13px;">&check;</span>' : ''}
-    </div>
-  `).join('');
+    `;
+    groups[groupName].forEach(p => {
+      const isSelected = p.id === currentId;
+      html += `
+        <div onclick="switchUserPersona('${p.id}')" style="display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 4px; cursor: pointer; transition: background 0.15s; background: ${isSelected ? '#f0fdfa' : '#ffffff'}; margin-bottom: 4px; border: 1px solid ${isSelected ? '#99f6e4' : '#e2e8f0'};" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='${isSelected ? '#f0fdfa' : '#ffffff'}'">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 28px; height: 28px; border-radius: 50%; background: ${isSelected ? '#008272' : '#64748b'}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 11px;">
+              ${p.avatar}
+            </div>
+            <div>
+              <strong style="display: block; font-size: 12px; color: #1e293b;">${p.name}</strong>
+              <span style="font-size: 10.5px; color: #64748b;">${p.department} &bull; <em style="color: #008272;">${p.role}</em></span>
+            </div>
+          </div>
+          ${isSelected ? '<span style="color: #008272; font-weight: bold; font-size: 13px;">✓</span>' : ''}
+        </div>
+      `;
+    });
+  });
+
+  container.innerHTML = html;
 }
 
 function switchUserPersona(personaId) {
@@ -6740,6 +7066,15 @@ function switchUserPersona(personaId) {
   // Update topbar avatar
   const avatarText = document.getElementById('topbarAvatarText');
   if (avatarText) avatarText.innerText = persona.avatar;
+
+  const profileAvatarLetter = document.getElementById('profileAvatarLetter');
+  if (profileAvatarLetter) profileAvatarLetter.innerText = persona.avatar;
+
+  const profileUserName = document.getElementById('profileUserName');
+  if (profileUserName) profileUserName.innerText = persona.name;
+
+  const profileUserEmail = document.getElementById('profileUserEmail');
+  if (profileUserEmail) profileUserEmail.innerText = persona.email;
 
   // Close flyout
   closeM365ProfileFlyout();
@@ -6874,7 +7209,7 @@ function backFromGroupWorkflow() {
 
 function renderWorkflowStepView(index) {
   if (!currentWorkflowSteps || currentWorkflowSteps.length === 0) {
-    currentWorkflowSteps = [{ stepName: 'Step 1', approver: '', action: 'Review & Approve', triggerMail: true }];
+    currentWorkflowSteps = [{ stepName: '', approver: '', action: 'Review & Approve', triggerMail: true }];
   }
   if (index < 0) index = 0;
   if (index >= currentWorkflowSteps.length) index = currentWorkflowSteps.length - 1;
@@ -6898,10 +7233,11 @@ function renderWorkflowStepView(index) {
     nextBtn.style.display = index < currentWorkflowSteps.length - 1 ? 'inline-flex' : 'none';
   }
 
-  // Populate step fields
+  // Populate step fields - allow custom step name without forced 'Step 1' prefill (Item 1)
   const stepNameInput = document.getElementById('indWfStepName');
   if (stepNameInput) {
-    stepNameInput.value = step.stepName || `Step ${index + 1}`;
+    stepNameInput.value = (step.stepName !== undefined && step.stepName !== null) ? step.stepName : '';
+    stepNameInput.placeholder = 'Enter Step Name';
   }
 
   setSelectValueSafe('indWfApprover', step.approver || '');
@@ -6919,7 +7255,7 @@ function saveCurrentStepData() {
   const triggerMailInput = document.getElementById('indWfTriggerMail');
 
   currentWorkflowSteps[currentWorkflowStepIndex] = {
-    stepName: stepNameInput ? stepNameInput.value : `Step ${currentWorkflowStepIndex + 1}`,
+    stepName: stepNameInput ? stepNameInput.value.trim() : '',
     approver: approverInput ? approverInput.value : '',
     action: 'Review & Approve',
     triggerMail: triggerMailInput ? triggerMailInput.checked : true
@@ -6938,7 +7274,7 @@ function addWorkflowStep() {
   saveCurrentStepData();
   const newStepNum = currentWorkflowSteps.length + 1;
   currentWorkflowSteps.push({
-    stepName: 'Step ' + newStepNum,
+    stepName: '',
     approver: '',
     action: 'Review & Approve',
     triggerMail: true
@@ -6967,6 +7303,10 @@ function openCreateIndividualWorkflow() {
   setSelectValueSafe('indWfAccessLevel', '');
   handleIndWfAccessLevelChange('');
 
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+  setSelectValueSafe('indWfBranch', defaultBranch);
+  setSelectValueSafe('indWfDept', AppState.activeDepartment || 'Administration');
+
   setFormFieldLocked('indWfTemplateName', false);
   setFormFieldLocked('indWfAccessLevel', false);
   setFormFieldLocked('indWfBranch', false);
@@ -6974,8 +7314,9 @@ function openCreateIndividualWorkflow() {
   setFormFieldLocked('indWfStepName', false);
   setFormFieldLocked('indWfApprover', false);
 
+  // Item 1: Step Name allows custom free-text input without prefilling 'Step 1'
   currentWorkflowSteps = [
-    { stepName: 'Step 1', approver: '', action: 'Review & Approve', triggerMail: true }
+    { stepName: '', approver: '', action: 'Review & Approve', triggerMail: true }
   ];
   currentWorkflowStepIndex = 0;
   renderWorkflowStepView(0);
@@ -7000,20 +7341,29 @@ function openCreateGroupWorkflow() {
   setSelectValueSafe('groupWfAccessLevel', '');
   handleGroupWfAccessLevelChange('');
 
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+  setSelectValueSafe('groupWfBranch', defaultBranch);
+  setSelectValueSafe('groupWfDept', AppState.activeDepartment || 'Administration');
+
   setFormFieldLocked('groupWfTemplateName', false);
   setFormFieldLocked('groupWfAccessLevel', false);
   setFormFieldLocked('groupWfBranch', false);
   setFormFieldLocked('groupWfDept', false);
   setFormFieldLocked('groupWfGroup', false);
 
-  setSelectValueSafe('groupWfGroup', 'Test-GM3');
-  const members = GROUP_MEMBERS_MAP['Test-GM3'] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin'];
-  renderGroupMembersChips(members);
+  // Item 5: Start with blank group selection and empty members chips
+  setSelectValueSafe('groupWfGroup', '');
+  renderGroupMembersChips([]);
 
   const addToggle = document.getElementById('groupWfAddAdditionalToggle');
   if (addToggle) {
     addToggle.checked = false;
     toggleAdditionalMembersField(false);
+  }
+
+  const actionSelect = document.getElementById('groupWfAction');
+  if (actionSelect) {
+    actionSelect.value = 'Review & Approve';
   }
 
   const modal = document.getElementById('groupWorkflowModal');
@@ -7033,11 +7383,13 @@ function openIndividualWorkflowModal(template = {}, isExisting = true) {
   const addStepBtn = document.getElementById('indWfAddStepBtn');
   if (addStepBtn) addStepBtn.style.display = isExisting ? 'none' : 'inline-flex';
 
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+
   document.getElementById('indWfTemplateName').value = template.name || 'Testing UAT';
   setSelectValueSafe('indWfAccessLevel', template.accessLevel || 'Department');
   handleIndWfAccessLevelChange(template.accessLevel || 'Department');
 
-  setSelectValueSafe('indWfBranch', template.branch || 'Innomick Technologies Corporate HQ');
+  setSelectValueSafe('indWfBranch', template.branch || defaultBranch);
   setSelectValueSafe('indWfDept', template.department || 'Facilities');
 
   // Lock metadata fields for existing workflow templates (as seen in Live SharePoint Screenshot)
@@ -7079,19 +7431,25 @@ function submitIndividualWorkflow() {
   saveCurrentStepData();
   const name = document.getElementById('indWfTemplateName').value.trim() || 'New Individual Workflow';
   const accessLevel = document.getElementById('indWfAccessLevel').value || 'Department';
-  const branch = document.getElementById('indWfBranch').value || 'Innomick Technologies Corporate HQ';
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+  const branch = document.getElementById('indWfBranch').value || defaultBranch;
   const department = document.getElementById('indWfDept').value || 'Facilities';
 
   if (activeWorkflowTemplateId) {
     const templateId = activeWorkflowTemplateId;
     const template = (InnomickData.workflowTemplates || []).find(t => t.id === templateId);
     if (template) {
+      template.name = name;
+      template.accessLevel = accessLevel;
+      template.branch = branch;
+      template.department = department;
       template.steps = [...currentWorkflowSteps];
       if (currentWorkflowSteps[0]) {
-        template.stepName = currentWorkflowSteps[0].stepName;
+        template.stepName = currentWorkflowSteps[0].stepName || 'Step 1';
         template.approver = currentWorkflowSteps[0].approver;
         template.triggerMail = currentWorkflowSteps[0].triggerMail;
       }
+      persistWorkflowTemplates();
     }
     closeIndividualWorkflowModal();
     openTemplateUpdatedModal(templateId);
@@ -7107,12 +7465,13 @@ function submitIndividualWorkflow() {
     branch: branch,
     department: department,
     steps: [...currentWorkflowSteps],
-    stepName: currentWorkflowSteps[0] ? currentWorkflowSteps[0].stepName : 'Step 1',
+    stepName: currentWorkflowSteps[0] && currentWorkflowSteps[0].stepName ? currentWorkflowSteps[0].stepName : 'Step 1',
     approver: currentWorkflowSteps[0] ? currentWorkflowSteps[0].approver : 'MD Faisal Ahmed',
     action: 'Review & Approve',
     triggerMail: currentWorkflowSteps[0] ? currentWorkflowSteps[0].triggerMail : true
   });
 
+  persistWorkflowTemplates();
   closeIndividualWorkflowModal();
   showToast(`Individual Workflow "${name}" saved successfully!`, 'success');
   renderCurrentView();
@@ -7150,6 +7509,15 @@ function removeGroupMemberChip(memberName) {
 }
 
 function handleGroupSelectChange(groupName) {
+  if (!groupName) {
+    renderGroupMembersChips([]);
+    const template = (InnomickData.workflowTemplates || []).find(t => t.id === activeWorkflowTemplateId);
+    if (template) {
+      template.group = '';
+      template.groupMembers = [];
+    }
+    return;
+  }
   const members = GROUP_MEMBERS_MAP[groupName] || ['Mohammed Wasifuddin'];
   const template = (InnomickData.workflowTemplates || []).find(t => t.id === activeWorkflowTemplateId);
   if (template) {
@@ -7169,13 +7537,15 @@ function openGroupWorkflowModal(template = {}, isExisting = true) {
   const modalTitle = document.getElementById('groupWfModalTitle');
   if (modalTitle) modalTitle.textContent = 'Group Workflow';
 
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+
   document.getElementById('groupWfTemplateName').value = template.name || 'Testing GRP Latest';
   setSelectValueSafe('groupWfAccessLevel', template.accessLevel || 'Department');
   handleGroupWfAccessLevelChange(template.accessLevel || 'Department');
 
-  setSelectValueSafe('groupWfBranch', template.branch || 'Innomick Technologies Corporate HQ');
+  setSelectValueSafe('groupWfBranch', template.branch || defaultBranch);
   setSelectValueSafe('groupWfDept', template.department || 'CEO Office');
-  setSelectValueSafe('groupWfGroup', template.group || 'Test-GM3');
+  setSelectValueSafe('groupWfGroup', template.group || '');
 
   // Lock metadata fields for existing workflow templates (as seen in Live SharePoint Screenshots 4 & 5)
   setFormFieldLocked('groupWfTemplateName', isExisting);
@@ -7187,8 +7557,8 @@ function openGroupWorkflowModal(template = {}, isExisting = true) {
   // Group remains editable
   setFormFieldLocked('groupWfGroup', false);
 
-  const groupName = template.group || 'Test-GM3';
-  const members = template.groupMembers || GROUP_MEMBERS_MAP[groupName] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin'];
+  const groupName = template.group || '';
+  const members = template.groupMembers || (groupName ? (GROUP_MEMBERS_MAP[groupName] || ['Mohammed Wasifuddin']) : []);
   renderGroupMembersChips(members);
 
   const addToggle = document.getElementById('groupWfAddAdditionalToggle');
@@ -7212,18 +7582,26 @@ function closeGroupWorkflowModal() {
 function submitGroupWorkflow() {
   const name = document.getElementById('groupWfTemplateName').value.trim() || 'Group Workflow';
   const accessLevel = document.getElementById('groupWfAccessLevel').value || 'Department';
-  const branch = document.getElementById('groupWfBranch').value || 'Innomick Technologies Corporate HQ';
+  const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
+  const branch = document.getElementById('groupWfBranch').value || defaultBranch;
   const department = document.getElementById('groupWfDept').value || 'CEO Office';
-  const group = document.getElementById('groupWfGroup').value || 'Test-GM3';
+  const group = document.getElementById('groupWfGroup').value || '';
   const addAdditional = document.getElementById('groupWfAddAdditionalToggle').checked;
-  const action = document.getElementById('groupWfAction').value;
+  const action = document.getElementById('groupWfAction').value || 'Review & Approve';
 
   if (activeWorkflowTemplateId) {
     const templateId = activeWorkflowTemplateId;
     const template = (InnomickData.workflowTemplates || []).find(t => t.id === templateId);
     if (template) {
+      template.name = name;
+      template.accessLevel = accessLevel;
+      template.branch = branch;
+      template.department = department;
       template.group = group;
+      template.groupMembers = group ? (GROUP_MEMBERS_MAP[group] || ['Mohammed Wasifuddin']) : [];
       template.addAdditional = addAdditional;
+      template.action = action;
+      persistWorkflowTemplates();
     }
     closeGroupWorkflowModal();
     openTemplateUpdatedModal(templateId);
@@ -7239,12 +7617,13 @@ function submitGroupWorkflow() {
     branch: branch,
     department: department,
     group: group,
-    groupMembers: GROUP_MEMBERS_MAP[group] || ['Mohammed Wasifuddin'],
+    groupMembers: group ? (GROUP_MEMBERS_MAP[group] || ['Mohammed Wasifuddin']) : [],
     addAdditional: addAdditional,
     additionalMembers: addAdditional ? ['MD Faisal Ahmed', 'Nelluri Venkatarao'] : [],
     action: action
   });
 
+  persistWorkflowTemplates();
   closeGroupWorkflowModal();
   showToast(`Group Workflow "${name}" saved successfully!`, 'success');
   renderCurrentView();
@@ -8184,6 +8563,7 @@ function showToast(message, type = 'success') {
 
 // Initialize on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
+  loadPersistedWorkflowTemplates();
   initRouter();
 
   // Test Harness / Screenshot Automation Helper

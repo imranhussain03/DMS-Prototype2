@@ -1479,12 +1479,14 @@ body {
   background: #ffffff;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-modal);
-  width: 100%;
+  width: 95%;
   max-width: 580px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  margin: auto;
+  box-sizing: border-box;
   transform: translateY(15px);
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -1499,6 +1501,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
+  background: #ffffff;
 }
 
 .modal-title {
@@ -1524,11 +1528,15 @@ body {
 }
 
 .modal-body {
-  padding: 20px;
+  padding: 20px 24px;
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(90vh - 125px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
+  box-sizing: border-box;
 }
 
 .modal-footer {
@@ -1538,7 +1546,11 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  background: var(--gray-50);
+  background: #ffffff;
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 /* Form Groups & Inputs */
@@ -2260,11 +2272,20 @@ body {
 }
 
 .sp-upload-form-label {
-  width: 185px;
+  width: 175px;
   font-size: 13px;
   font-weight: 500;
   color: #334155;
   flex-shrink: 0;
+}
+
+#individualWorkflowModal .sp-upload-form-label,
+#groupWorkflowModal .sp-upload-form-label {
+  width: 145px !important;
+  min-width: 145px !important;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
 }
 
 .sp-upload-form-control {
@@ -2750,12 +2771,64 @@ select.sp-form-input.is-readonly {
   padding: 4px 0;
 }
 
-#groupWorkflowModal .dms-modal-dialog {
-  overflow: visible;
+#groupWorkflowModal .dms-modal-dialog,
+#individualWorkflowModal .dms-modal-dialog {
+  max-width: 540px !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  border-radius: 6px !important;
 }
 
-#groupWorkflowModal .modal-body {
-  overflow: visible;
+#groupWorkflowModal .modal-body,
+#individualWorkflowModal .modal-body {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: calc(88vh - 120px) !important;
+  overflow-y: auto !important;
+  padding: 16px 22px !important;
+}
+
+#groupWorkflowModal .modal-footer,
+#individualWorkflowModal .modal-footer {
+  flex-shrink: 0 !important;
+  position: sticky !important;
+  bottom: 0 !important;
+  background: #ffffff !important;
+  z-index: 10 !important;
+  padding: 12px 22px !important;
+  border-top: 1px solid #f1f5f9 !important;
+}
+
+.sp-step-bar {
+  background: #f1f3f5;
+  color: #008272;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 8px 14px;
+  margin-bottom: 14px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sp-step-bar-nav-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #008272;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 6px;
+  border-radius: 3px;
+  transition: background 0.15s;
+}
+
+.sp-step-bar-nav-btn:hover {
+  background: rgba(0, 130, 114, 0.12);
 }
 
 .sp-additional-member-option {

@@ -38,34 +38,8 @@ const InnomickData = {
       department: "Corporate Management",
       email: "admin@innomick.com",
       avatar: "I",
-      role: "Site Owner / Administrator"
-    },
-    {
-      id: "zuber",
-      name: "Mohammed Zuberuddin",
-      title: "Lead Systems Specialist",
-      department: "Information Technology",
-      email: "m.zuber@innomicktechnologies.com",
-      avatar: "MZ",
-      role: "Submitter / IT Specialist"
-    },
-    {
-      id: "wasif",
-      name: "Mohammed Wasifuddin",
-      title: "VP Corporate Operations",
-      department: "Corporate Management",
-      email: "m.wasif@innomicktechnologies.com",
-      avatar: "MW",
-      role: "Approver / Department Head"
-    },
-    {
-      id: "asif",
-      name: "Sayed Asif Ahmed",
-      title: "Head of Supply Chain Management",
-      department: "Central Supply Chain Management",
-      email: "asif.ahmed@innomicktechnologies.com",
-      avatar: "SA",
-      role: "Approver / Head of Supply Chain"
+      role: "Site Owner / Administrator",
+      roleGroup: "Administrators"
     },
     {
       id: "imran",
@@ -74,7 +48,88 @@ const InnomickData = {
       department: "Engineering & Cloud Architecture",
       email: "imran.h@innomicktechnologies.com",
       avatar: "IH",
-      role: "Admin & Solutions Architect"
+      role: "Admin & Solutions Architect",
+      roleGroup: "Administrators"
+    },
+    {
+      id: "wasif",
+      name: "Mohammed Wasifuddin",
+      title: "VP Corporate Operations",
+      department: "Corporate Management",
+      email: "m.wasif@innomicktechnologies.com",
+      avatar: "MW",
+      role: "Approver / Department Head",
+      roleGroup: "Approvers & Department Heads"
+    },
+    {
+      id: "asif",
+      name: "Sayed Asif Ahmed",
+      title: "Head of Supply Chain Management",
+      department: "Central Supply Chain Management",
+      email: "asif.ahmed@innomicktechnologies.com",
+      avatar: "SA",
+      role: "Approver / Head of Supply Chain",
+      roleGroup: "Approvers & Department Heads"
+    },
+    {
+      id: "faisal",
+      name: "MD Faisal Ahmed",
+      title: "Facilities & Operations Director",
+      department: "Facilities",
+      email: "faisal.a@innomicktechnologies.com",
+      avatar: "FA",
+      role: "Approver / Facilities Director",
+      roleGroup: "Approvers & Department Heads"
+    },
+    {
+      id: "zuber",
+      name: "Mohammed Zuberuddin",
+      title: "Lead Systems Specialist",
+      department: "Information Technology",
+      email: "m.zuber@innomicktechnologies.com",
+      avatar: "MZ",
+      role: "Submitter / IT Specialist",
+      roleGroup: "Submitters & Reviewers"
+    },
+    {
+      id: "jabbar",
+      name: "Abdul Jabbar",
+      title: "Quality Assurance Specialist",
+      department: "Quality & Compliance",
+      email: "abdul.j@innomicktechnologies.com",
+      avatar: "AJ",
+      role: "Reviewer / QA Specialist",
+      roleGroup: "Submitters & Reviewers"
+    },
+    {
+      id: "venkat",
+      name: "Nelluri Venkatarao",
+      title: "Senior Operations Specialist",
+      department: "Operations",
+      email: "nelluri.v@innomicktechnologies.com",
+      avatar: "NV",
+      role: "Reviewer / Operations Specialist",
+      roleGroup: "Submitters & Reviewers"
+    },
+    {
+      id: "tariq",
+      name: "Dr. Tariq Al-Mansoor",
+      title: "Chief Medical Officer",
+      department: "Hospital Director Office",
+      email: "tariq.m@innomicktechnologies.com",
+      avatar: "TM",
+      role: "Medical Director & Approver",
+      roleGroup: "Clinicians & Medical Directors"
+    },
+    {
+      id: "jumana",
+      name: "Jumana AL-Yousifi",
+      title: "Clinical Systems Lead",
+      department: "Clinical Information Systems",
+      email: "jumana.y@innomicktechnologies.com",
+      avatar: "JY",
+      role: "Clinical Lead & Reviewer",
+      roleGroup: "Clinicians & Medical Directors"
     }
   ],
 
@@ -7340,7 +7395,9 @@ const InnomickData = {
   ]
 };
 
-// Link Al-Salam aliases to ensure both Innomick and Al-Salam branch names work identically
+// Link branch names so Innomick Hyderabad, Innomick Delhi, and hospital aliases resolve seamlessly
+InnomickData.departmentSites["Innomick Hyderabad"] = InnomickData.departmentSites["Innomick Al-Ahmadi Hospital"];
+InnomickData.departmentSites["Innomick Delhi"] = InnomickData.departmentSites["Innomick Al-Assima Hospital"];
 InnomickData.departmentSites["Al-Salam Al-Ahmadi Hospital"] = InnomickData.departmentSites["Innomick Al-Ahmadi Hospital"];
 InnomickData.departmentSites["Al-Salam Al-Assima Hospital"] = InnomickData.departmentSites["Innomick Al-Assima Hospital"];
 
