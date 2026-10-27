@@ -5014,3 +5014,327 @@ select.sp-form-input.is-readonly {
 
 
 
+
+/* ==========================================================================
+   SHAREPOINT LIST TABLE (shared by My Files, My Organization, Departments,
+   Shared Files and Expiring Files) - matches the live DMS list view
+   ========================================================================== */
+.sp-list-table th {
+  background-color: #cfe6e8 !important;
+  border-right: none !important;
+  border-bottom: 1px solid #b9d6d9 !important;
+  padding: 10px 12px 6px;
+  vertical-align: top;
+  color: #333333;
+}
+
+.sp-list-table .sp-dept-th-title {
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.sp-list-table .sp-dept-th-title svg {
+  color: #64748b;
+}
+
+.sp-list-th-filter {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #8b989d;
+}
+
+.sp-list-th-filter svg {
+  flex-shrink: 0;
+}
+
+.sp-list-th-filter input.column-search-input {
+  width: 100%;
+  min-width: 40px;
+  border: none;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  font-size: 11px;
+  color: #333333;
+  padding: 1px 0;
+  outline: none;
+}
+
+.sp-list-th-filter input.column-search-input:focus {
+  border-bottom-color: #008272;
+}
+
+.sp-list-table td {
+  text-align: center;
+  border-right: none;
+  border-bottom: 1px solid #e5e7eb;
+  color: #333333;
+  height: 46px;
+}
+
+.sp-list-table tbody tr:nth-child(odd) td {
+  background-color: #f5f5f5;
+}
+
+.sp-list-table tbody tr:nth-child(even) td {
+  background-color: #ffffff;
+}
+
+.sp-list-table tbody tr:hover td {
+  background-color: #eef6f6;
+}
+
+.sp-list-select-col {
+  width: 40px;
+  min-width: 40px;
+  text-align: center !important;
+}
+
+.sp-list-table td.sp-list-name-cell {
+  text-align: left;
+  min-width: 300px;
+}
+
+.sp-list-name-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sp-list-name-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sp-list-name-main .file-link {
+  max-width: 230px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sp-list-name-wrap .row-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.sp-list-folder-dots {
+  color: #008272;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding-right: 34px;
+}
+
+.sp-list-table .dept-folder-link {
+  color: #008272;
+  font-weight: 600;
+}
+
+.sp-list-table .table-folder-row td {
+  background-color: #f5f5f5 !important;
+}
+
+.sp-list-fav-text {
+  cursor: pointer;
+}
+
+.sp-list-table .favorite-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+}
+
+/* Library page layout: Upload row, search row on the right, "Home" breadcrumb */
+.sp-library-toolbar {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.sp-library-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 8px 0 6px;
+}
+
+.sp-library-breadcrumb {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.sp-page-title-bar {
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 14px;
+  margin-bottom: 12px;
+}
+
+/* My Favorites (live layout: title, centred search, refresh) */
+.sp-favorites-header {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.sp-favorites-header .view-main-title {
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.sp-favorites-search {
+  flex: 0 1 520px;
+  margin: 0 auto;
+}
+
+.sp-favorites-table-wrap {
+  overflow-x: auto;
+  background: #ffffff;
+}
+
+.sp-favorites-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sp-favorites-table th {
+  text-align: left;
+  font-weight: 700;
+  color: #333333;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.sp-favorites-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #333333;
+  white-space: nowrap;
+}
+
+.sp-favorites-table tbody tr:nth-child(odd) td {
+  background: #f5f5f5;
+}
+
+.sp-favorites-table .favorite-star-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Approval timeline: completed step = filled teal circle with a check */
+.sp-review-node-done {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #008272;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Approval "View History" dialog */
+.sp-approval-history-dialog {
+  max-width: 660px;
+  width: calc(100% - 32px);
+  border-radius: 4px;
+  min-height: 280px;
+}
+
+.sp-approval-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px 10px;
+  margin: 0 14px;
+  border-bottom: 1px solid #cbd5e1;
+  color: #008272;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sp-approval-history-close {
+  background: none;
+  border: none;
+  color: #008272;
+  cursor: pointer;
+  display: inline-flex;
+}
+
+.sp-approval-history-body {
+  padding: 14px;
+  overflow-x: auto;
+}
+
+.sp-approval-history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.sp-approval-history-table th {
+  text-align: left;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 8px 6px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.sp-approval-history-table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.sp-approval-history-empty {
+  text-align: center;
+  color: #64748b;
+  padding: 28px 6px !important;
+}
+
+/* Workflow type badges as rendered in the live DMS */
+.wf-badge-grp {
+  background: #9be59b;
+  color: #14532d;
+}
+
+.wf-badge-ind {
+  background: #b9dce4;
+  color: #1e3a44;
+}
+
+/* Additional Members list opens inside the form flow so the scrolling modal body never clips it */
+#groupWorkflowModal .sp-additional-members-dropdown {
+  position: static;
+  margin-top: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  box-shadow: none;
+}
+
+/* Upload Document form: category-specific rows share the same flex gap as the
+   fixed rows so every label/input pair is evenly spaced */
+#dynamicCategoryFieldsContainer {
+  display: contents;
+}
+
+#uploadStep1Form .sp-upload-form-row {
+  margin-bottom: 0;
+  min-height: 34px;
+}
