@@ -1944,23 +1944,21 @@ function submitApprovalRemarksAction() {
       item.status = next.stepName || `Step ${idx + 2}`;
       item.routed = true;
       if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
-      showToast(`Approved. "${item.name}" moved to ${item.status} (${next.approverFullName}).`, 'success');
+
     } else {
       completeApprovalRecord(item, 'Approved');
       syncApprovalOutcomeToDocument(item, 'Active');
       publishApprovedDocumentToDepartment(item);
-      showToast(`Document "${item.name}" approved.`, 'success');
+      addApprovedToRecentDocuments(item);
     }
   } else if (actionType === 'Reject') {
     rev.status = 'rejected';
     completeApprovalRecord(item, 'Rejected');
     syncApprovalOutcomeToDocument(item, 'Rejected');
-    showToast(`Document "${item.name}" rejected.`, 'warning');
   } else {
     rev.status = 'change-requested';
     completeApprovalRecord(item, 'Request for Change');
     syncApprovalOutcomeToDocument(item, 'Request for Change');
-    showToast(`Change requested for "${item.name}".`, 'info');
   }
 
   closeApprovalRemarksModal();
@@ -1971,6 +1969,29 @@ function submitApprovalRemarksAction() {
   } else {
     backToApprovalsTab('inbox');
   }
+  showInfoSuccessModal(actionType === 'Approve' ? 'Request is Approved!'
+    : actionType === 'Reject' ? 'Request is Rejected!' : 'Change is Requested!');
+}
+
+// Approved documents appear at the top of Home > Recent Documents
+function addApprovedToRecentDocuments(item) {
+  if (!InnomickData.recentDocuments) InnomickData.recentDocuments = [];
+  const original = (InnomickData.documents || []).find(d => d.id === item.docId) || {};
+  const idx = InnomickData.recentDocuments.findIndex(d => d.id === (item.docId || item.id));
+  if (idx !== -1) InnomickData.recentDocuments.splice(idx, 1);
+  InnomickData.recentDocuments.unshift({
+    ...original,
+    id: item.docId || item.id,
+    name: item.name,
+    type: original.type || (item.name || '').split('.').pop(),
+    status: 'Active',
+    lastAccessed: '1 minutes ago',
+    location: original.location || 'My Department',
+    owner: item.owner || item.requestedBy,
+    category: item.category,
+    subCategory: item.tagSubCategory || '-',
+    department: item.department
+  });
 }
 
 // "View History": the approval actions taken on this request (Modified On / By / Action / Comments)
@@ -4780,6 +4801,9 @@ function openUploadModal(defaultCategory, sourceContext) {
     if (mainTitle) mainTitle.innerText = 'Upload Document';
   }
 
+  const permRow = document.getElementById('uploadFilePermissionRow');
+  if (permRow) permRow.style.display = 'none';
+
   // Reset standard text inputs for fresh document upload
   const subCatInput = document.getElementById('uploadSubCategory');
   const descInput = document.getElementById('uploadDescription');
@@ -4796,6 +4820,7 @@ function openUploadModal(defaultCategory, sourceContext) {
   }
 
   // Populate Categories
+  populateUploadCategoryOptions();
   const catSelect = document.getElementById('uploadCategorySelect');
   if (catSelect) {
     catSelect.value = defaultCategory || '';
@@ -4845,266 +4870,141 @@ function handleFileChosen(input) {
   }
 }
 
-// Dynamic Category Metadata Fields (Press Releases, Accreditation, Audit, Budget, etc.)
-// Clean fields with blank values and helpful placeholders
-function handleUploadCategoryChange(category) {
-  const container = document.getElementById('dynamicCategoryFieldsContainer');
-  const permRow = document.getElementById('uploadFilePermissionRow');
-  if (permRow) permRow.style.display = 'none'; // Always hidden in live SharePoint DMS
+// Category-specific upload fields, captured from the live DMS upload form.
+// Every field is required; `key` is the document property / list column it fills.
+const F = (key, label, type, options) => ({ key, label, type, options });
+const UPLOAD_FIELD_SETS = {
+  inspection: [
+    F('reviewDate', 'Review Date', 'date'),
+    F('auditInspectionDate', 'Audit/Inspection Date', 'date'),
+    F('inspectionArea', 'Inspection Area', 'text'),
+    F('findingsSummary', 'Findings Summary', 'text'),
+    F('actionStatus', 'Action Status', 'select', ['Completed', 'In Progress', 'Not Started'])
+  ],
+  training: [
+    F('targetAudience', 'Target Audience', 'select', ['Internal', 'External']),
+    F('trainingWorkshopName', 'Training/Workshop Name', 'text'),
+    F('trainerFacilitator', 'Trainer/Facilitator', 'text'),
+    F('sessionDate', 'Session Date', 'date'),
+    F('completionStatus', 'Completion Status', 'select', ['Completed', 'Pending', 'Not Started'])
+  ],
+  facility: [
+    F('assetFacilityName', 'Asset/Facility Name', 'text'),
+    F('location', 'Location', 'text'),
+    F('requestId', 'Request ID', 'text'),
+    F('incidentRequestDate', 'Incident/Request Date', 'date'),
+    F('resolutionStatus', 'Resolution Status', 'select', ['Resolved', 'Pending'])
+  ],
+  finance: [
+    F('amount', 'Amount', 'number'),
+    F('paymentStatus', 'Payment Status', 'select', ['Paid', 'Unpaid', 'Pending']),
+    F('approvalNumber', 'Approval Number', 'text'),
+    F('fiscalPeriodYear', 'Fiscal Period/Year', 'text'),
+    F('vendor', 'Vendor', 'text')
+  ],
+  campaign: [
+    F('versionNumber', 'Version Number', 'number'),
+    F('campaignProjectName', 'Campaign/Project Name', 'text'),
+    F('targetAudience', 'Target Audience', 'select', ['Internal', 'External']),
+    F('eventLaunchDate', 'Event/Launch Date', 'date'),
+    F('keyMessages', 'Key Messages', 'text')
+  ],
+  equipment: [
+    F('equipmentName', 'Equipment Name', 'text'),
+    F('equipmentLocation', 'Equipment Location', 'text'),
+    F('documentValidityDate', 'Document Validity Date', 'date'),
+    F('responsibleDepartment', 'Responsible Department', 'text'),
+    F('reviewFrequency', 'Review Frequency', 'select', ['Quarterly', 'Annually'])
+  ],
+  software: [
+    F('systemSoftwareName', 'System/Software Name', 'text'),
+    F('versionRelease', 'Version/Release', 'text'),
+    F('issueRequestId', 'Issue/Request ID', 'text'),
+    F('priority', 'Priority', 'select', ['High', 'Medium', 'Low'])
+  ],
+  compliance: [
+    F('approvalStatus', 'Approval Status', 'select', ['Approved', 'Draft', 'Pending']),
+    F('startDate', 'Start Date', 'date'),
+    F('caseProjectName', 'Case/Project Name', 'text'),
+    F('validityPeriod', 'Validity Period', 'text'),
+    F('expiryDate', 'Expiry Date', 'date'),
+    F('complianceArea', 'Compliance Area', 'select', ['Health', 'Safety', 'Environment']),
+    F('referenceNumber', 'Reference Number', 'text')
+  ],
+  contract: [
+    F('summary', 'Summary', 'text'),
+    F('entity', 'Entity', 'text'),
+    F('reviewDate', 'Review Date', 'date'),
+    F('referenceNumber', 'Reference Number', 'text')
+  ],
+  employee: [
+    F('employeeName', 'Employee Name', 'text'),
+    F('employeeId', 'Employee ID', 'text'),
+    F('startDate', 'Start Date', 'date'),
+    F('endDate', 'End Date', 'date'),
+    F('positionDesignation', 'Position/Designation', 'text'),
+    F('employeeStatus', 'Status', 'select', ['Active', 'Required'])
+  ],
+  correspondence: [
+    F('effectiveDate', 'Effective Date', 'date'),
+    F('approvalStatus', 'Approval Status', 'select', ['Approved', 'Draft', 'Pending']),
+    F('versionNumber', 'Version Number', 'number'),
+    F('referenceNumber', 'Reference Number', 'text')
+  ]
+};
 
-  if (!container) return;
+// Upload categories in the live order, each mapped to its field set
+const UPLOAD_CATEGORY_FIELDS = {
+  'Accreditation Documents': 'inspection', 'Assessment Results': 'training', 'Asset Inventories': 'facility',
+  'Audit Documents': 'finance', 'Branding Guidelines': 'campaign', 'Budget Plans': 'finance',
+  'Calibration Certificates': 'equipment', 'Campaign Materials': 'campaign', 'Certification Records': 'training',
+  'Change Requests': 'software', 'Clinical Trial Documents': 'equipment', 'Compliance Checklists': 'compliance',
+  'Contracts': 'contract', 'Corrective Actions': 'inspection', 'Credit Notes': 'contract',
+  'Curriculum Guides': 'training', 'Employee Contracts': 'employee', 'Equipment Logs': 'facility',
+  'Equipment Maintenance Logs': 'equipment', 'Event Plans': 'campaign', 'Financial Reports': 'finance',
+  'General Correspondences': 'correspondence', 'Incident Reports': 'software', 'Internal Audits': 'inspection',
+  'Internal Memos': 'correspondence', 'Invoices and Receipts': 'finance', 'Licenses and Certifications': 'compliance',
+  'Loans and Returns': 'contract', 'Maintenance Requests': 'facility', 'Meeting Minutes': 'correspondence',
+  'Non-conformance Reports': 'inspection', 'Client Forms': 'equipment', 'Performance Reviews': 'employee',
+  'Policies and Procedures': 'correspondence', 'Press Releases': 'campaign', 'Purchase Orders': 'finance',
+  'Quality Assurance Reports': 'inspection', 'Recruitment Files': 'employee', 'Regulatory Filings': 'compliance',
+  'Risk Assessments': 'compliance', 'Security Reports': 'facility', 'Social Media Content': 'campaign',
+  'Software Documentation': 'software', 'Space Utilization Plans': 'facility',
+  'Standard Operating Procedures (SOPs)': 'equipment', 'Supplier Registration Documents': 'contract',
+  'Training Materials': 'correspondence', 'Training Records': 'employee', 'Training Schedules': 'training',
+  'User Manuals': 'software', 'Warehouse Reports': 'contract'
+};
 
-  if (!category) {
-    container.innerHTML = '';
-    return;
-  }
-
-  if (category === 'Assessment Results') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Target Audience <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_targetAudience">
-            <option value="" disabled selected>Select Target Audience</option>
-            <option value="Cloud Architects & Engineering Staff">Cloud Architects & Engineering Staff</option>
-            <option value="Executive Board & Directors">Executive Board & Directors</option>
-            <option value="General Public & Media Press">General Public & Media Press</option>
-            <option value="Internal Operations & IT">Internal Operations & IT</option>
-            <option value="Project Managers & Delivery Teams">Project Managers & Delivery Teams</option>
-            <option value="All Company Staff">All Company Staff</option>
-          </select>
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Training/Workshop Name <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_trainingName" placeholder="Enter Training/Workshop Name" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Trainer/Facilitator <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_trainer" placeholder="Enter Trainer/Facilitator" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Session Date <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_sessionDate" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Completion Status <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_completionStatus">
-            <option value="" disabled selected>Select Completion Status</option>
-            <option value="Completed">Completed</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Pending Assessment">Pending Assessment</option>
-            <option value="Passed with Distinction">Passed with Distinction</option>
-            <option value="Requires Re-test">Requires Re-test</option>
-          </select>
-        </div>
-      </div>
-    `;
-  } else if (category === 'Asset Inventories') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Asset/Facility Name <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_assetName" placeholder="Enter Asset/Facility Name" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Location <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_location" placeholder="Enter Location" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Request ID <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_requestId" placeholder="Enter Request ID" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Incident/Request Date <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_incidentDate" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Resolution Status <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_resolutionStatus">
-            <option value="" disabled selected>Select Resolution Status</option>
-            <option value="Resolved / Deployed">Resolved / Deployed</option>
-            <option value="Under Inspection">Under Inspection</option>
-            <option value="In Inventory / Available">In Inventory / Available</option>
-            <option value="Maintenance Required">Maintenance Required</option>
-            <option value="Decommissioned">Decommissioned</option>
-          </select>
-        </div>
-      </div>
-    `;
-  } else if (category === 'Audit Documents') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Amount <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_amount" placeholder="Enter Amount" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Payment Status <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_paymentStatus">
-            <option value="" disabled selected>Select Payment Status</option>
-            <option value="Paid">Paid</option>
-            <option value="Pending Payment">Pending Payment</option>
-            <option value="Partially Paid">Partially Paid</option>
-            <option value="Under Review / Audit Clearance">Under Review / Audit Clearance</option>
-            <option value="Exempt / Waived">Exempt / Waived</option>
-          </select>
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Approval Number <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_approvalNumber" placeholder="Enter Approval Number" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Fiscal Period/Year <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_fiscalPeriod" placeholder="Enter Fiscal Period/Year" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Vendor <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_vendor" placeholder="Enter Vendor" value="">
-        </div>
-      </div>
-    `;
-  } else if (category === 'Press Releases' || category === 'Press Release') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Version Number <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_version" value="" placeholder="Enter Version Number">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Campaign/Project Name <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_projectName" value="" placeholder="Enter Campaign/Project Name">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Target Audience <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_audience">
-            <option value="" disabled selected>Select Target Audience</option>
-            <option value="General Public & Media Press">General Public & Media Press</option>
-            <option value="Engineering & IT Professionals">Engineering & IT Professionals</option>
-            <option value="Executive Board & Directors">Executive Board & Directors</option>
-            <option value="Internal Operations & IT">Internal Operations & IT</option>
-            <option value="Enterprise Clients & Partners">Enterprise Clients & Partners</option>
-          </select>
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Event/Launch Date <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_launchDate" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Key Messages <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_keyMessages" value="" placeholder="Enter Key Messages">
-        </div>
-      </div>
-    `;
-  } else if (category === 'Accreditation Documents' || category === 'Accreditation & ISO Records') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Review Date <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_reviewDate" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Audit/Inspection Date <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="date" class="sp-form-input" id="dyn_auditInspectionDate" value="">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Inspection Area <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_inspectionArea" value="" placeholder="Enter Inspection Area">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Findings Summary <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <input type="text" class="sp-form-input" id="dyn_findingsSummary" value="" placeholder="Enter Findings Summary">
-        </div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Action Status <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_actionStatus">
-            <option value="" disabled selected>Select Action Status</option>
-            <option value="Not Started">Not Started</option>
-            <option value="Compliant / Cleared">Compliant / Cleared</option>
-            <option value="Pending Review">Pending Review</option>
-            <option value="Follow-up Action Required">Follow-up Action Required</option>
-            <option value="Major Non-Conformance">Major Non-Conformance</option>
-            <option value="Observation / Recommendation">Observation / Recommendation</option>
-          </select>
-        </div>
-      </div>
-    `;
-  } else if (category === 'Budget Plans') {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Cost Center <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_costCenter" value="" placeholder="Enter Cost Center"></div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Allocated Budget <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_budgetAmount" value="" placeholder="Enter Allocated Budget"></div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Approving Authority <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_approver" value="" placeholder="Enter Approving Authority"></div>
-      </div>
-    `;
-  } else {
-    container.innerHTML = `
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Reference Code <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control"><input type="text" class="sp-form-input" id="dyn_genericRef" value="" placeholder="Enter Reference Code"></div>
-      </div>
-      <div class="sp-upload-form-row">
-        <label class="sp-upload-form-label">Review Frequency <span style="color: #dc2626;">*</span></label>
-        <div class="sp-upload-form-control">
-          <select class="sp-form-input" id="dyn_reviewFreq">
-            <option value="" disabled selected>Select Review Frequency</option>
-            <option value="Annual Review">Annual Review</option>
-            <option value="Semi-Annual">Semi-Annual</option>
-            <option value="Quarterly">Quarterly</option>
-          </select>
-        </div>
-      </div>
-    `;
-  }
+function getUploadCategoryFields(category) {
+  return UPLOAD_FIELD_SETS[UPLOAD_CATEGORY_FIELDS[category]] || [];
 }
 
-// Step 1 -> Step 2 Transition
+function populateUploadCategoryOptions() {
+  const sel = document.getElementById('uploadCategorySelect');
+  if (!sel || sel.dataset.populated) return;
+  sel.innerHTML = '<option value="" disabled selected>Select Category</option>' +
+    Object.keys(UPLOAD_CATEGORY_FIELDS).map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.dataset.populated = '1';
+}
+
+// Category-specific fields start blank every time the category changes
+function handleUploadCategoryChange(category) {
+  const container = document.getElementById('dynamicCategoryFieldsContainer');
+  if (!container) return;
+  container.innerHTML = getUploadCategoryFields(category).map(f => `
+      <div class="sp-upload-form-row">
+        <label class="sp-upload-form-label">${f.label} <span style="color: #dc2626;">*</span></label>
+        <div class="sp-upload-form-control">
+          ${f.type === 'select' ? `
+          <select class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}">
+            <option value="" disabled selected>Select ${f.label}</option>
+            ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+          </select>` : `
+          <input type="${f.type}" class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}" value=""${f.type === 'date' ? '' : ` placeholder="Enter ${f.label}"`}>`}
+        </div>
+      </div>`).join('');
+}
+
 function handleUploadStep1Next(event) {
   event.preventDefault();
   const category = document.getElementById('uploadCategorySelect').value;
@@ -5166,7 +5066,7 @@ function handleUploadStep1Next(event) {
     stakeHolder: stakeholder,
     referenceNumber: 'INM-' + Math.floor(1000 + Math.random() * 9000),
     vendor: dynVendor,
-    status: dynActionStatus || 'Active',
+    status: 'Active',
     uploadDate: dateDisplay,
     expireDate: '16 October 2027',
     description: description !== '-' ? description : (dynFindingsSummary || dynKeyMessages || dynProject || '-'),
@@ -5188,6 +5088,11 @@ function handleUploadStep1Next(event) {
     checkedOutBy: '',
     sharedWith: []
   };
+
+  // Store every category-specific field under its list column key
+  document.querySelectorAll('#dynamicCategoryFieldsContainer [data-field-key]').forEach(el => {
+    if (el.value) AppState.pendingUploadData[el.dataset.fieldKey] = el.value;
+  });
 
   // If in Direct Upload mode, branch directly to Folder Selection (Step 2)
   if (AppState.isDirectUploadMode) {
@@ -5222,6 +5127,11 @@ function updateStep2WorkflowFooter() {
   const skipBtn = document.getElementById('btnSkipApproval');
   if (skipBtn) {
     skipBtn.style.display = isMyFiles ? 'inline-block' : 'none';
+  }
+  // Department / Organization uploads offer "Self Approve" (as in the live DMS)
+  const selfBtn = document.getElementById('btnSelfApprove');
+  if (selfBtn) {
+    selfBtn.style.display = isMyFiles ? 'none' : 'inline-block';
   }
 }
 
@@ -5634,7 +5544,19 @@ function getUploadWorkflowTemplates(type) {
   const me = currentUserName();
   const saved = (InnomickData.workflowTemplates || [])
     .filter(t => t.type === (isInd ? 'Individual Workflow' : 'Group Workflow'))
-    .filter(t => !(t.accessLevel === 'User Only' && t.createdBy && t.createdBy !== me))
+    // Seed templates are already represented by the upload presets; only templates created in the prototype are added
+    .filter(t => t.createdBy)
+    .filter(t => {
+      // Same visibility as the live picker: Organization templates for everyone,
+      // Department templates only inside their department, User Only for their creator
+      if (t.accessLevel === 'Organization') return true;
+      if (t.accessLevel === 'Department') {
+        return AppState.currentUploadSource === 'my-department' && t.department === AppState.activeDepartment &&
+          (!t.branch || t.branch === AppState.activeBranch);
+      }
+      if (t.accessLevel === 'User Only') return !t.createdBy || t.createdBy === me;
+      return false;
+    })
     .map(t => isInd ? {
       id: t.id,
       name: t.name,
@@ -5694,16 +5616,6 @@ function renderWorkflowTemplateCards(type) {
       </div>
     `;
   });
-
-  // Only individual workflow has + Blank card matching Live SharePoint UAT
-  if (isInd) {
-    html += `
-      <div class="sp-workflow-blank-card" onclick="openWorkflowConfigForm('${type}')" title="Configure custom blank workflow">
-        <span style="font-size: 20px; font-weight: 600; color: #008272; line-height: 1;">+</span>
-        <span style="font-size: 13.5px; font-weight: 500; color: #1e293b;">Blank</span>
-      </div>
-    `;
-  }
 
   grid.innerHTML = html;
 
@@ -6003,10 +5915,8 @@ function registerUploadForApproval(doc, approvalOpts) {
   // department library receives them once the final approver signs off
   InnomickData.documents.unshift(doc);
   InnomickData.myFiles.unshift(doc);
-  if (InnomickData.recentDocuments) {
-    InnomickData.recentDocuments.unshift({ ...doc, lastAccessed: 'Just now' });
-  }
 
+  // Recent Documents and the department library receive it once it is approved
   createApprovalRequest(doc, approvalOpts);
   resetAllColumnFilters();
   AppState.globalSearchQuery = '';
@@ -6191,6 +6101,29 @@ function executeSkipWorkflowUpload() {
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
+  renderCurrentView();
+  showInfoSuccessModal('Successfully submitted !');
+}
+
+function toggleUploadFilePermissions() {
+  const row = document.getElementById('uploadFilePermissionRow');
+  if (row) row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+}
+
+// "Self Approve": the uploader approves their own document, so it is published straight away
+function executeSelfApproveUpload() {
+  const doc = AppState.pendingUploadData;
+  if (!doc) return;
+  doc.status = 'Active';
+  closeUploadModal();
+  if (AppState.currentUploadSource === 'my-department') {
+    addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
+    return;
+  }
+  doc.location = 'My Organization';
+  InnomickData.documents.unshift(doc);
+  InnomickData.myFiles.unshift(doc);
+  if (InnomickData.recentDocuments) InnomickData.recentDocuments.unshift({ ...doc, lastAccessed: 'Just now' });
   renderCurrentView();
   showInfoSuccessModal('Successfully submitted !');
 }
@@ -6705,7 +6638,11 @@ let activeApprovalDocId = null;
 // Safe select value setter (creates option if missing so value is never lost)
 function setSelectValueSafe(selectId, value) {
   const el = document.getElementById(selectId);
-  if (!el || !value) return;
+  if (!el) return;
+  if (!value) {
+    el.value = '';
+    return;
+  }
   const exists = Array.from(el.options).some(opt => opt.value === value);
   if (!exists) {
     const opt = document.createElement('option');
@@ -6771,9 +6708,12 @@ const BRANCH_DEPARTMENTS = {
 function populateWorkflowDeptOptions(selectId, branch, selected) {
   const sel = document.getElementById(selectId);
   if (!sel) return;
-  const depts = BRANCH_DEPARTMENTS[branch] || BRANCH_DEPARTMENTS['Innomick Delhi'];
-  sel.innerHTML = depts.map(d => `<option value="${d}">${d}</option>`).join('');
-  sel.value = depts.includes(selected) ? selected : depts[0];
+  // Department stays disabled until a branch is chosen (as in the live DMS)
+  const depts = BRANCH_DEPARTMENTS[branch] || [];
+  sel.innerHTML = `<option value="">Please Select Department</option>` +
+    depts.map(d => `<option value="${d}">${d}</option>`).join('');
+  sel.disabled = !branch;
+  sel.value = depts.includes(selected) ? selected : '';
 }
 
 function handleIndWfAccessLevelChange(val) {
@@ -6897,8 +6837,8 @@ function openCreateIndividualWorkflow() {
   handleIndWfAccessLevelChange('');
 
   const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
-  setSelectValueSafe('indWfBranch', defaultBranch);
-  populateWorkflowDeptOptions('indWfDept', document.getElementById('indWfBranch').value, AppState.activeDepartment || 'Administration');
+  setSelectValueSafe('indWfBranch', '');
+  populateWorkflowDeptOptions('indWfDept', '', '');
 
   setFormFieldLocked('indWfTemplateName', false);
   setFormFieldLocked('indWfAccessLevel', false);
@@ -6935,8 +6875,8 @@ function openCreateGroupWorkflow() {
   handleGroupWfAccessLevelChange('');
 
   const defaultBranch = AppState.activeBranch === 'Innomick Delhi' ? 'Innomick Delhi' : 'Innomick Hyderabad';
-  setSelectValueSafe('groupWfBranch', defaultBranch);
-  populateWorkflowDeptOptions('groupWfDept', document.getElementById('groupWfBranch').value, AppState.activeDepartment || 'Administration');
+  setSelectValueSafe('groupWfBranch', '');
+  populateWorkflowDeptOptions('groupWfDept', '', '');
 
   setFormFieldLocked('groupWfTemplateName', false);
   setFormFieldLocked('groupWfAccessLevel', false);

@@ -5338,3 +5338,42 @@ select.sp-form-input.is-readonly {
   margin-bottom: 0;
   min-height: 34px;
 }
+
+/* Create Workflow forms (Individual / Group): compact, evenly aligned rows as in the live DMS */
+#individualWorkflowModal .dms-modal-dialog,
+#groupWorkflowModal .dms-modal-dialog {
+  max-width: 590px !important;
+}
+
+#individualWorkflowModal .modal-body,
+#groupWorkflowModal .modal-body {
+  padding: 12px 16px !important;
+}
+
+#individualWorkflowModal .sp-upload-form-row,
+#groupWorkflowModal .sp-upload-form-row {
+  margin-bottom: 4px;
+  min-height: 32px;
+  gap: 0;
+}
+
+#individualWorkflowModal .sp-upload-form-label,
+#groupWorkflowModal .sp-upload-form-label {
+  width: 193px !important;
+  min-width: 193px !important;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+#individualWorkflowModal .sp-form-input,
+#groupWorkflowModal .sp-form-input {
+  height: 32px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+#individualWorkflowModal .sp-step-bar {
+  margin-bottom: 8px;
+}

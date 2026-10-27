@@ -33,6 +33,25 @@
     </div>
 
     <div class="topbar-right">
+      <!-- Next steps (megaphone) -->
+      <button class="topbar-icon-btn" id="topbarNextStepsBtn" onclick="toggleHeaderPanel('nextsteps')" title="Next steps">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <path d="M3 10v4h3l7 5V5L6 10H3z"/>
+          <path d="M6 14l1.5 5h2.5l-1.2-4"/>
+          <path d="M17 9a4 4 0 0 1 0 6"/>
+        </svg>
+      </button>
+
+      <!-- Submit feedback -->
+      <button class="topbar-icon-btn" id="topbarFeedbackBtn" onclick="toggleHeaderPanel('feedback')" title="Submit feedback to Microsoft">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
+          <rect x="11" y="3" width="10" height="7" rx="1.5"/>
+          <path d="M14 10v2.5L16.5 10"/>
+          <circle cx="7" cy="12" r="2.5"/>
+          <path d="M2.5 21v-1.5A3.5 3.5 0 0 1 6 16h2a3.5 3.5 0 0 1 3.5 3.5V21"/>
+        </svg>
+      </button>
+
       <!-- Settings Panel Trigger -->
       <button class="topbar-icon-btn" id="topbarSettingsBtn" onclick="toggleHeaderPanel('settings')" title="Settings">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -369,7 +388,7 @@
             </div>
           </div>
 
-          <!-- Add File Permission Row (Hidden to match live SharePoint DMS) -->
+          <!-- File Permission Row (shown via "+ Add File Permissions") -->
           <div class="sp-upload-form-row" id="uploadFilePermissionRow" style="display: none;">
             <label class="sp-upload-form-label">File Permission</label>
             <div class="sp-upload-form-control">
@@ -428,6 +447,11 @@
               </div>
             </div>
           </div>
+
+          <!-- + Add File Permissions (reveals the File Permission row) -->
+          <div class="sp-upload-form-row" style="min-height: 0;">
+            <a href="javascript:void(0)" id="uploadAddPermissionsLink" onclick="toggleUploadFilePermissions()" style="font-size: 13px; color: #008272; text-decoration: underline;">+ Add File Permissions</a>
+          </div>
         </div>
 
         <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
@@ -473,6 +497,7 @@
         <div class="modal-footer" id="uploadStep2Footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
           <button type="button" class="btn-cancel-teal" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 22px; font-size: 13px; border: 1px solid #008272; background: #fff; color: #008272; font-weight: 500; cursor: pointer;">Cancel</button>
           <button type="button" id="btnSkipApproval" class="btn-skip-approval" onclick="executeSkipWorkflowUpload()" style="display: none; border-radius: 4px; padding: 6px 20px; font-size: 13px; border: 1px solid #008272; background: #008272; color: #fff; font-weight: 500; cursor: pointer;">Skip approval</button>
+          <button type="button" id="btnSelfApprove" onclick="executeSelfApproveUpload()" style="display: none; border-radius: 4px; padding: 6px 20px; font-size: 13px; border: 1px solid #008272; background: #008272; color: #fff; font-weight: 600; cursor: pointer;">Self Approve</button>
         </div>
       </div>
 
@@ -485,7 +510,6 @@
         </div>
 
         <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
           <button type="button" id="btnViewIndividualWorkflow" class="btn-outline-teal" onclick="viewSelectedWorkflow()" style="display: none; border: 1px solid #008272; color: #008272; background: #fff; border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600; cursor: pointer;">View</button>
           <button type="button" id="btnSubmitIndividualWorkflow" class="btn-primary-teal" onclick="submitSelectedWorkflow()" disabled style="border-radius: 4px; padding: 6px 22px; font-size: 13px; font-weight: 600; opacity: 0.6; cursor: not-allowed;">Submit</button>
         </div>
@@ -500,7 +524,6 @@
         </div>
 
         <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
-          <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
           <button type="button" id="btnViewGroupWorkflow" class="btn-outline-teal" onclick="viewSelectedWorkflow()" style="display: none; border: 1px solid #008272; color: #008272; background: #fff; border-radius: 4px; padding: 6px 20px; font-size: 13px; font-weight: 600; cursor: pointer;">View</button>
           <button type="button" id="btnSubmitGroupWorkflow" class="btn-primary-teal" onclick="submitSelectedWorkflow()" disabled style="border-radius: 4px; padding: 6px 22px; font-size: 13px; font-weight: 600; opacity: 0.6; cursor: not-allowed;">Submit</button>
         </div>
@@ -940,7 +963,8 @@
             <label class="sp-upload-form-label">Branch</label>
             <div class="sp-upload-form-control">
               <select class="sp-form-input" id="indWfBranch" onchange="populateWorkflowDeptOptions('indWfDept', this.value)">
-                <option value="Innomick Hyderabad" selected>Innomick Hyderabad</option>
+                <option value="">Please Select Branch</option>
+                <option value="Innomick Hyderabad">Innomick Hyderabad</option>
                 <option value="Innomick Delhi">Innomick Delhi</option>
               </select>
             </div>
@@ -1064,7 +1088,8 @@
             <label class="sp-upload-form-label">Branch</label>
             <div class="sp-upload-form-control">
               <select class="sp-form-input" id="groupWfBranch" onchange="populateWorkflowDeptOptions('groupWfDept', this.value)">
-                <option value="Innomick Hyderabad" selected>Innomick Hyderabad</option>
+                <option value="">Please Select Branch</option>
+                <option value="Innomick Hyderabad">Innomick Hyderabad</option>
                 <option value="Innomick Delhi">Innomick Delhi</option>
               </select>
             </div>
