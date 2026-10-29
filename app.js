@@ -2644,9 +2644,9 @@ const SP_LIST_PRESETS = {
     dynamic: true
   },
   'department': {
-    base: ['name', 'id', 'category', 'subCategory', 'department', 'owner', 'status', 'uploadDate', 'expireDate', 'description', 'stakeHolder'],
+    base: ['name', 'id', 'category', 'subCategory', 'department', 'owner', 'uploadDate', 'expireDate', 'stakeHolder'],
     favoriteStyle: 'star',
-    dynamic: true
+    dynamic: false
   },
   'expiring': {
     base: ['name', 'category', 'status', 'department', 'referenceNumber', 'favorite', 'stakeHolder', 'owner', 'subCategory', 'uploadDate', 'id', 'vendor', 'expireDate'],
