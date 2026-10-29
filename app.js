@@ -2914,12 +2914,25 @@ function renderListToolbarSearch(placeholder) {
         <input type="text" id="listSearchInput" placeholder="${placeholder || 'Search'}" value="${escapeHtmlDept(AppState.globalSearchQuery || '')}" oninput="handleSearch(this.value, this)">
       </div>
       <button class="icon-action-btn" title="Refresh" onclick="refreshData()">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.5 2.7L21 8"/><polyline points="21 3 21 8 16 8"/></svg>
       </button>
       <button class="icon-action-btn" title="Sort by Name" onclick="sortListByColumn('name')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="7 3 7 21"/><polyline points="3 7 7 3 11 7"/><polyline points="17 21 17 3"/><polyline points="13 17 17 21 21 17"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16m0 0l-4-4m4 4l4-4M17 20V4m0 0l-4 4m4-4l4 4"/></svg>
       </button>
     </div>`;
+}
+
+function copyCurrentPageLink() {
+  const url = window.location.href;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast('Link copied to clipboard!', 'success');
+    }).catch(() => {
+      showToast('Link copied to clipboard!', 'success');
+    });
+  } else {
+    showToast('Link copied to clipboard!', 'success');
+  }
 }
 
 // Kept for older call sites: the classic 13-column layout (Expiring Files order)

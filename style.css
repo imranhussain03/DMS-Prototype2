@@ -906,7 +906,7 @@ body {
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  color: var(--gray-600);
+  color: #008272;
   padding: 5px;
   cursor: pointer;
   display: flex;
@@ -915,9 +915,9 @@ body {
   transition: all 0.15s;
 }
 .icon-action-btn:hover {
-  background: var(--gray-100);
-  border-color: var(--gray-300);
-  color: var(--gray-900);
+  background: #e6f4f2;
+  border-color: #cbd5e1;
+  color: #00695c;
 }
 
 /* ==========================================================================
