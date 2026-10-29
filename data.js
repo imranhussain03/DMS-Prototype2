@@ -3978,15 +3978,17 @@ const InnomickData = {
       id: "1078/2031,2032",
       slug: "app-news-bugs",
       name: "Publish to Option for Annuncement, Slider & News Bugs.docx",
-      workflowType: "GRP",
+      workflowType: "IND",
       category: "Accreditation Documents",
       department: "Finance & Accounts",
-      status: "Approval Pending",
+      sourceBranch: "Innomick Hyderabad",
+      sourceDepartment: "Executive Director Office",
+      status: "Approval by Mohammed Wasifuddin",
       progressStep: 0,
-      progressTotal: 1,
+      progressTotal: 2,
       requestedBy: "MD Faisal Ahmed",
       requestedOn: "12 Oct 2026",
-      group: "Test-GM3",
+      group: "-",
       owner: "MD Faisal Ahmed",
       tagSubCategory: "-",
       referenceNumber: "-",
@@ -3996,15 +3998,17 @@ const InnomickData = {
       vendor: "-",
       reviews: [
         {
+          stepName: "Approval by Mohammed Wasifuddin",
           approverName: "Approval by Mohammed Wasifuddin",
           approverFullName: "Mohammed Wasifuddin",
           status: "pending",
           comments: "No User comments to view"
         },
         {
+          stepName: "Approval by MD Faisal Ahmed",
           approverName: "Approval by MD Faisal Ahmed",
           approverFullName: "MD Faisal Ahmed",
-          status: "pending",
+          status: "waiting",
           comments: "No User comments to view"
         }
       ]

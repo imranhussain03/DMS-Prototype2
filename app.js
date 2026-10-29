@@ -136,6 +136,33 @@ function isGroupApproval(item) {
   return String(item.workflowType || '').toUpperCase() === 'GRP';
 }
 
+function matchApproverName(target, candidate) {
+  if (!target || !candidate) return false;
+  const clean = s => String(s || '').replace(/^Approval by\s+/i, '').replace(/^Step\s*\d+\s*:\s*/i, '').trim().toLowerCase();
+  const cTarget = clean(target);
+  const cCandidate = clean(candidate);
+  if (cTarget === cCandidate) return true;
+  const personas = (typeof InnomickData !== 'undefined' && InnomickData.availablePersonas) || [];
+  const pTarget = personas.find(p => clean(p.name) === cTarget || p.id.toLowerCase() === cTarget);
+  const pCandidate = personas.find(p => clean(p.name) === cCandidate || p.id.toLowerCase() === cCandidate);
+  if (pTarget && pCandidate && pTarget.id === pCandidate.id) return true;
+  if (pTarget && clean(pTarget.name) === cCandidate) return true;
+  if (pCandidate && clean(pCandidate.name) === cTarget) return true;
+  return false;
+}
+
+function getApproverFullName(rev) {
+  if (!rev) return '';
+  let name = rev.approverFullName || rev.approver || '';
+  if (!name && rev.approverName) {
+    name = String(rev.approverName).replace(/^Approval by\s+/i, '').replace(/^Step\s*\d+\s*:\s*/i, '').trim();
+  }
+  if (!name && rev.stepName && !/^Step\s*\d+$/i.test(rev.stepName)) {
+    name = String(rev.stepName).replace(/^Approval by\s+/i, '').trim();
+  }
+  return String(name || '').trim();
+}
+
 // Bring seed records into one consistent shape: one review per step, each with a status
 function normalizeApprovalRecord(item, isSeedInbox) {
   if (!item || item._normalized) return item;
@@ -157,6 +184,10 @@ function normalizeApprovalRecord(item, isSeedInbox) {
         status: 'pending',
         comments: 'No User comments to view'
       }));
+    } else {
+      item.reviews.forEach(r => {
+        if (!r.approverFullName) r.approverFullName = getApproverFullName(r);
+      });
     }
     return item;
   }
@@ -167,18 +198,25 @@ function normalizeApprovalRecord(item, isSeedInbox) {
     item.reviews.push({ approverFullName: STEP_APPROVER_POOL[i % STEP_APPROVER_POOL.length], comments: 'No User comments to view' });
   }
   item.reviews.forEach((rev, i) => {
+    if (!rev.approverFullName && rev.approverName) {
+      rev.approverFullName = getApproverFullName(rev);
+    }
     if (!rev.stepName) {
       rev.stepName = (rev.approverName && /^step\b/i.test(rev.approverName)) ? rev.approverName
-        : (total > 1 ? `Step ${i + 1}` : (rev.approverName || `Approval by ${rev.approverFullName || SEED_APPROVAL_OWNER}`));
+        : (total > 1 ? (rev.approverFullName ? `Approval by ${rev.approverFullName}` : `Step ${i + 1}`) : (rev.approverName || `Approval by ${rev.approverFullName || SEED_APPROVAL_OWNER}`));
     }
     if (!['rejected', 'change-requested'].includes(rev.status)) {
       rev.status = i < step ? 'approved' : (i === step ? 'pending' : 'waiting');
     }
   });
-  // A seed inbox record is waiting on the seed owner at its active step
+  // A seed inbox record is waiting on the configured approver; only fall back to seed owner if unassigned
   if (isSeedInbox && item.reviews[step] && !isFinalApprovalStatus(item.status)) {
-    item.reviews[step].approverFullName = SEED_APPROVAL_OWNER;
-    if (total === 1) item.reviews[step].stepName = `Approval by ${SEED_APPROVAL_OWNER}`;
+    if (!item.reviews[step].approverFullName && !item.reviews[step].approverName) {
+      item.reviews[step].approverFullName = SEED_APPROVAL_OWNER;
+    }
+    if (total === 1 && !item.reviews[step].stepName) {
+      item.reviews[step].stepName = `Approval by ${item.reviews[step].approverFullName || SEED_APPROVAL_OWNER}`;
+    }
   }
   item.progressStep = step;
   item.progressTotal = total;
@@ -191,11 +229,24 @@ function isFinalApprovalStatus(status) {
 
 function getActiveStepIndex(item) {
   const reviews = item.reviews || [];
-  const idx = reviews.findIndex(r => r.status !== 'approved');
-  return idx === -1 ? Math.max(0, reviews.length - 1) : idx;
+  const pendingIdx = reviews.findIndex(r => r.status === 'pending');
+  if (pendingIdx !== -1) return pendingIdx;
+  const waitingIdx = reviews.findIndex(r => r.status === 'waiting');
+  if (waitingIdx !== -1) return waitingIdx;
+  const nonApproved = reviews.findIndex(r => r.status !== 'approved');
+  if (nonApproved !== -1) return nonApproved;
+  return Math.max(0, reviews.length - 1);
 }
 
 function getStepApprovers(item) {
+  if (!item) return [];
+  const reviews = item.reviews || [];
+  if (reviews.length > 0) {
+    const activeIdx = getActiveStepIndex(item);
+    const rev = reviews[activeIdx];
+    const approver = getApproverFullName(rev);
+    if (approver) return [approver];
+  }
   if (isGroupApproval(item)) {
     const groupName = item.group || 'Group';
     return (item.groupMembers && item.groupMembers.length)
@@ -203,48 +254,113 @@ function getStepApprovers(item) {
       : (GROUP_MEMBERS_MAP[groupName] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin']);
   }
   if (!item.routed) return [SEED_APPROVAL_OWNER];
-  const rev = (item.reviews || [])[getActiveStepIndex(item)];
-  return rev ? [rev.approverFullName] : [SEED_APPROVAL_OWNER];
+  return [SEED_APPROVAL_OWNER];
 }
 
 function canCurrentUserAct(item) {
-  return !isFinalApprovalStatus(item.status) && getStepApprovers(item).includes(currentUserName());
+  if (!item || isFinalApprovalStatus(item.status)) return false;
+  const me = currentUserName();
+  const reviews = item.reviews || [];
+
+  if (isGroupApproval(item)) {
+    // In group workflow, any member of the group who hasn't approved yet can act
+    const groupMembers = (item.groupMembers && item.groupMembers.length)
+      ? item.groupMembers
+      : (GROUP_MEMBERS_MAP[item.group] || reviews.map(r => getApproverFullName(r)).filter(Boolean));
+    const isMember = groupMembers.some(m => matchApproverName(m, me));
+    if (!isMember) return false;
+    // If this member already acted and approved, they cannot act again
+    const myRev = reviews.find(r => matchApproverName(getApproverFullName(r), me));
+    if (myRev && ['approved', 'rejected', 'change-requested'].includes(myRev.status)) {
+      return false;
+    }
+    return true;
+  }
+
+  // Individual sequential workflow
+  if (reviews.length > 0) {
+    const activeIdx = getActiveStepIndex(item);
+    const activeRev = reviews[activeIdx];
+    if (!activeRev || activeRev.status !== 'pending') return false;
+
+    // Check if active step is assigned to current user
+    const activeApprover = getApproverFullName(activeRev);
+    if (activeApprover) {
+      return matchApproverName(activeApprover, me);
+    }
+    return getStepApprovers(item).some(a => matchApproverName(a, me));
+  }
+
+  return getStepApprovers(item).some(a => matchApproverName(a, me));
 }
 
 function getMyInbox() {
-  const me = currentUserName();
-  const isAdmin = isCurrentUserAdmin();
-  return (InnomickData.approvalsInbox || []).filter(item => isAdmin || getStepApprovers(item).includes(me));
+  return (InnomickData.approvalsInbox || []).filter(item => canCurrentUserAct(item));
 }
 
 function getMyOutbox() {
   const me = currentUserName();
-  const isAdmin = isCurrentUserAdmin();
-  return (InnomickData.approvalsOutbox || []).filter(item => isAdmin || (item.requestedBy || SEED_APPROVAL_OWNER) === me);
+  return (InnomickData.approvalsOutbox || []).filter(item => matchApproverName(item.requestedBy || item.submittedBy || SEED_APPROVAL_OWNER, me));
 }
 
 function getMyInboxHistory() {
   const me = currentUserName();
-  const isAdmin = isCurrentUserAdmin();
-  return (InnomickData.approvalsHistory || []).filter(item => isAdmin || (item.routed ? (item.actedBy || []).includes(me) : me === SEED_APPROVAL_OWNER));
+  return (InnomickData.approvalsHistory || []).filter(item => {
+    if (!item) return false;
+    if (item.actedBy && item.actedBy.some(u => matchApproverName(u, me))) return true;
+    if (item.reviews && item.reviews.some(r => matchApproverName(getApproverFullName(r), me) && ['approved', 'rejected', 'change-requested'].includes(r.status))) return true;
+    if (item.history && item.history.some(h => matchApproverName(h.modifiedBy, me))) return true;
+    // In group approval, if it's finished, group members also see it in their history
+    if (isGroupApproval(item) && isFinalApprovalStatus(item.status)) {
+      const groupMembers = (item.groupMembers && item.groupMembers.length) ? item.groupMembers : (GROUP_MEMBERS_MAP[item.group] || []);
+      if (groupMembers.some(m => matchApproverName(m, me))) return true;
+    }
+    return false;
+  });
 }
 
 function getMyOutboxHistory() {
   const me = currentUserName();
-  return (InnomickData.approvalsOutboxHistory || []).filter(item => (item.requestedBy || item.submittedBy || SEED_APPROVAL_OWNER) === me);
+  return (InnomickData.approvalsOutboxHistory || []).filter(item => matchApproverName(item.requestedBy || item.submittedBy || SEED_APPROVAL_OWNER, me));
 }
 
 // Exact lookup across every approval list; returns the record and the list it lives in
 function findApprovalRecord(docId) {
   if (!docId) return { item: null, source: null };
-  const lists = [
-    ['inbox', InnomickData.approvalsInbox], ['outbox', InnomickData.approvalsOutbox],
-    ['history', InnomickData.approvalsHistory], ['outbox-history', InnomickData.approvalsOutboxHistory]
-  ];
-  for (const [source, list] of lists) {
-    const item = (list || []).find(x => x.id === docId || (x.slug && x.slug === docId));
-    if (item) return { item, source };
+  const me = currentUserName();
+
+  // If item is in Inbox and current user can act on it, source is 'inbox'
+  const inboxItem = (InnomickData.approvalsInbox || []).find(x => x.id === docId || (x.slug && x.slug === docId));
+  if (inboxItem && canCurrentUserAct(inboxItem)) {
+    return { item: inboxItem, source: 'inbox' };
   }
+
+  // If item is in History and user acted on it or it is final:
+  const historyItem = (InnomickData.approvalsHistory || []).find(x => x.id === docId || (x.slug && x.slug === docId));
+  if (historyItem) {
+    const userInHistory = (historyItem.actedBy && historyItem.actedBy.some(u => matchApproverName(u, me))) ||
+      (historyItem.reviews && historyItem.reviews.some(r => matchApproverName(getApproverFullName(r), me) && ['approved', 'rejected', 'change-requested'].includes(r.status))) ||
+      (historyItem.history && historyItem.history.some(h => matchApproverName(h.modifiedBy, me)));
+    if (userInHistory || isFinalApprovalStatus(historyItem.status)) {
+      return { item: historyItem, source: 'history' };
+    }
+  }
+
+  // Outbox checks
+  const outboxItem = (InnomickData.approvalsOutbox || []).find(x => x.id === docId || (x.slug && x.slug === docId));
+  if (outboxItem) {
+    return { item: outboxItem, source: 'outbox' };
+  }
+
+  const outboxHistItem = (InnomickData.approvalsOutboxHistory || []).find(x => x.id === docId || (x.slug && x.slug === docId));
+  if (outboxHistItem) {
+    return { item: outboxHistItem, source: 'outbox-history' };
+  }
+
+  // Fallbacks:
+  if (historyItem) return { item: historyItem, source: 'history' };
+  if (inboxItem) return { item: inboxItem, source: 'inbox' };
+
   return { item: null, source: null };
 }
 
@@ -1701,9 +1817,8 @@ function renderApproveDocumentView(docId) {
   }
 
   normalizeApprovalRecord(item);
-  // Actions only appear when the record is opened from the Inbox and it is waiting on this user
   const source = AppState.approvalDocSource || found.source;
-  const viewOnly = !(source === 'inbox' || source === 'home') || !canCurrentUserAct(item);
+  const viewOnly = (source === 'history' || source === 'outbox-history') || !(source === 'inbox' || source === 'home') || !canCurrentUserAct(item);
   const reviews = item.reviews || [];
   const activeIdx = getActiveStepIndex(item);
 
@@ -1910,57 +2025,101 @@ function publishApprovedDocumentToDepartment(item) {
   if (!item) return;
 
   const original = item._sourceDoc || (InnomickData.documents || []).find(d => d.id === item.docId) || {};
+  const docName = item.name || item.documentName || original.name || 'Document.docx';
+  const docId = item.docId || original.id || nextDocumentId();
+
   const approvedDoc = {
     ...original,
-    id: item.docId || original.id || nextDocumentId(),
-    name: item.name || item.documentName || 'Document.docx',
-    type: original.type || ((item.name || '').split('.').pop() || 'docx').toLowerCase(),
-    category: item.category || original.category || '-',
+    id: docId,
+    name: docName,
+    type: original.type || ((docName || '').split('.').pop() || 'docx').toLowerCase(),
+    category: item.category || original.category || 'Accreditation Documents',
     subCategory: item.tagSubCategory || original.subCategory || '-',
-    department: item.department || original.department || (item.sourceDepartment || InnomickData.currentUser.department),
-    owner: item.owner || item.requestedBy || original.owner,
+    department: item.department || original.department || (item.sourceDepartment || (InnomickData.currentUser && InnomickData.currentUser.department) || 'Executive Director Office'),
+    owner: item.owner || item.requestedBy || original.owner || currentUserName(),
     status: 'Active',
     stakeHolder: item.stakeholder || original.stakeHolder || '-',
     referenceNumber: item.referenceNumber || original.referenceNumber || '-',
     vendor: item.vendor || original.vendor || '-',
     description: item.description || original.description || '-',
+    uploadDate: item.updateDate || original.uploadDate || formatShortDate(),
+    expireDate: original.expireDate || '-',
     folder: original.folder || '-',
     parentFolder: original.parentFolder || null,
-    location: item.sourceLocation || original.location || (item.sourceDepartment || 'My Files'),
+    location: (item.sourceUploadSource === 'my-files' || item.sourceLocation === 'My Files') ? 'My Files' : (item.sourceUploadSource === 'my-organization' || item.sourceLocation === 'My Organization') ? 'My Organization' : 'My Department',
     favorite: false
   };
 
+  const isMyFiles = item.sourceUploadSource === 'my-files' || item.sourceLocation === 'My Files' || original.location === 'My Files';
+  const isMyOrg = item.sourceUploadSource === 'my-organization' || item.sourceLocation === 'My Organization' || original.location === 'My Organization';
+
   // If originally from My Files:
-  if (item.sourceUploadSource === 'my-files' || item.sourceLocation === 'My Files') {
+  if (isMyFiles) {
     if (!InnomickData.myFiles) InnomickData.myFiles = [];
-    if (!InnomickData.myFiles.some(d => d.id === approvedDoc.id)) {
+    if (!InnomickData.myFiles.some(d => d.id === approvedDoc.id || d.name === approvedDoc.name)) {
       InnomickData.myFiles.unshift(approvedDoc);
     }
     return;
   }
 
-  // If originally from Department:
-  if (item.sourceBranch && item.sourceDepartment) {
-    const branch = item.sourceBranch;
-    const dept = item.sourceDepartment;
-
-    if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
-    if (!InnomickData.departmentSites[branch]) InnomickData.departmentSites[branch] = {};
-    if (!InnomickData.departmentSites[branch][dept]) InnomickData.departmentSites[branch][dept] = [];
-
-    if (!InnomickData.departmentSites[branch][dept].some(d => d.id === approvedDoc.id)) {
-      InnomickData.departmentSites[branch][dept].unshift(approvedDoc);
+  // If originally from My Organization:
+  if (isMyOrg) {
+    if (!InnomickData.documents) InnomickData.documents = [];
+    const orgIdx = InnomickData.documents.findIndex(d => d.id === approvedDoc.id || d.name === approvedDoc.name);
+    if (orgIdx !== -1) {
+      InnomickData.documents[orgIdx] = approvedDoc;
+    } else {
+      InnomickData.documents.unshift(approvedDoc);
     }
     return;
   }
 
-  // If originally from My Organization:
-  if (item.sourceUploadSource === 'my-organization' || item.sourceLocation === 'My Organization') {
-    if (!InnomickData.documents) InnomickData.documents = [];
-    if (!InnomickData.documents.some(d => d.id === approvedDoc.id)) {
-      InnomickData.documents.unshift(approvedDoc);
-    }
+  // Otherwise, it was uploaded in Department -> Publish strictly to Department Library:
+  const dept = item.sourceDepartment || item.department || 'Executive Director Office';
+  let branch = item.sourceBranch || AppState.activeBranch || 'Innomick Hyderabad';
+  let canonicalBranch = branch;
+  if (branch.includes('Hyderabad') || branch.includes('Ahmadi')) {
+    canonicalBranch = 'Innomick Hyderabad';
+  } else if (branch.includes('Delhi') || branch.includes('Assima')) {
+    canonicalBranch = 'Innomick Delhi';
   }
+
+  // Ensure department collection exists for target department and branch primary department
+  const targetDepts = [dept];
+  if (canonicalBranch === 'Innomick Hyderabad' && !targetDepts.includes('Executive Director Office')) {
+    targetDepts.push('Executive Director Office');
+  }
+  if (canonicalBranch === 'Innomick Delhi' && !targetDepts.includes('Information Technology')) {
+    targetDepts.push('Information Technology');
+  }
+
+  if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
+  if (!InnomickData.departmentSites[canonicalBranch]) InnomickData.departmentSites[canonicalBranch] = {};
+
+  targetDepts.forEach(dKey => {
+    if (!InnomickData.departmentSites[canonicalBranch][dKey]) InnomickData.departmentSites[canonicalBranch][dKey] = [];
+    const deptList = InnomickData.departmentSites[canonicalBranch][dKey];
+    const existingIdx = deptList.findIndex(d => d.id === approvedDoc.id || d.name === approvedDoc.name);
+    if (existingIdx !== -1) {
+      deptList[existingIdx] = approvedDoc;
+    } else {
+      deptList.unshift(approvedDoc);
+    }
+  });
+
+  // Also ensure alias branches receive it
+  ['Innomick Hyderabad', 'Innomick Delhi', 'Al-Salam Al-Ahmadi Hospital', 'Al-Salam Al-Assima Hospital'].forEach(b => {
+    if (InnomickData.departmentSites[b]) {
+      targetDepts.forEach(dKey => {
+        if (InnomickData.departmentSites[b][dKey]) {
+          const list = InnomickData.departmentSites[b][dKey];
+          if (!list.some(d => d.id === approvedDoc.id || d.name === approvedDoc.name)) {
+            list.unshift(approvedDoc);
+          }
+        }
+      });
+    }
+  });
 }
 
 // Close out a finished request: leave the Inbox/Outbox, land in both histories
@@ -1995,45 +2154,51 @@ function submitApprovalRemarksAction() {
   }
 
   const me = currentUserName();
-  const idx = getActiveStepIndex(item);
-  let rev = item.reviews[idx];
+  let rev;
+  let idx = 0;
+
   if (isGroupApproval(item)) {
-    const memberRev = item.reviews.find(r => r.approverFullName === me && r.status !== 'approved');
-    if (memberRev) rev = memberRev;
+    rev = item.reviews.find(r => matchApproverName(getApproverFullName(r), me) && r.status !== 'approved');
+    if (!rev) rev = item.reviews.find(r => r.status === 'pending') || item.reviews[0];
+  } else {
+    idx = getActiveStepIndex(item);
+    rev = item.reviews[idx];
   }
+
   const actionLabel = actionType === 'Approve' ? 'Approved' : actionType === 'Reject' ? 'Rejected' : 'Request for Change';
 
   rev.comments = remarkText || 'No User comments to view';
   rev.actedBy = me;
   if (!item.actedBy) item.actedBy = [];
-  if (!item.actedBy.includes(me)) item.actedBy.push(me);
+  if (!item.actedBy.some(u => matchApproverName(u, me))) item.actedBy.push(me);
   if (!item.history) item.history = [];
   item.history.push({ modifiedOn: formatApprovalTimestamp(), modifiedBy: me, action: actionLabel, comments: remarkText || '-' });
 
   if (actionType === 'Approve') {
     rev.status = 'approved';
     if (isGroupApproval(item)) {
-      const allApproved = item.reviews.every(r => r.status === 'approved');
-      item.progressStep = item.reviews.filter(r => r.status === 'approved').length;
-      if (allApproved) {
-        completeApprovalRecord(item, 'Approved');
-        syncApprovalOutcomeToDocument(item, 'Active');
-        publishApprovedDocumentToDepartment(item);
-        addApprovedToRecentDocuments(item);
-      } else {
-        item.status = 'Approval Pending';
-        if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
-      }
+      // In group workflow: ANY ONE approval completes the approval, leaves inbox, moves to history, and publishes to department!
+      item.progressStep = item.progressTotal;
+      completeApprovalRecord(item, 'Approved');
+      syncApprovalOutcomeToDocument(item, 'Active');
+      publishApprovedDocumentToDepartment(item);
+      addApprovedToRecentDocuments(item);
     } else {
+      // Individual sequential workflow:
+      // If two-step (or multi-step), approving from one account removes it from their inbox, moves to history,
+      // and routes it to the next approver's inbox. When all approve, lands in department!
       item.progressStep = idx + 1;
       const next = item.reviews[idx + 1];
       if (next) {
         // Hand the request to the next step's approver
         next.status = 'pending';
-        item.status = next.stepName || `Step ${idx + 2}`;
+        const nextApprover = getApproverFullName(next);
+        item.status = next.stepName || (nextApprover ? `Approval by ${nextApprover}` : `Step ${idx + 2}`);
         item.routed = true;
+        if (!InnomickData.approvalsHistory) InnomickData.approvalsHistory = [];
         if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
       } else {
+        // All approvals completed!
         completeApprovalRecord(item, 'Approved');
         syncApprovalOutcomeToDocument(item, 'Active');
         publishApprovedDocumentToDepartment(item);
@@ -3185,6 +3350,8 @@ function renderMyOrganizationView() {
   // Gap 30: Documents pending approval should not be visible in My Organization until approval workflow is completed
   let docs = (InnomickData.documents || []).filter(d => {
     if (d && (d.status === 'In Review' || d.status === 'Approval Pending' || d.status === 'Pending Approval')) return false;
+    // Department files or personal files must never appear in My Organization
+    if (d && (d.location === 'My Department' || d.location === 'My Files')) return false;
     return true;
   });
 
