@@ -2644,7 +2644,7 @@ const SP_LIST_PRESETS = {
     dynamic: true
   },
   'department': {
-    base: ['name', 'category', 'subCategory', 'department', 'owner', 'status', 'uploadDate', 'expireDate', 'description', 'stakeHolder'],
+    base: ['name', 'id', 'category', 'subCategory', 'department', 'owner', 'status', 'uploadDate', 'expireDate', 'description', 'stakeHolder'],
     favoriteStyle: 'star',
     dynamic: true
   },
@@ -2935,16 +2935,21 @@ function renderDepartmentView() {
   let branch = AppState.activeBranch || 'Innomick Delhi';
   let dept = AppState.activeDepartment || 'Information Technology';
   
-  const displayBranch = branch;
   let canonicalBranch = branch;
-  if (branch.includes('Hyderabad')) {
+  if (branch.includes('Hyderabad') || branch.includes('Ahmadi')) {
     canonicalBranch = 'Innomick Hyderabad';
-  } else if (branch.includes('Delhi')) {
+  } else if (branch.includes('Delhi') || branch.includes('Assima')) {
     canonicalBranch = 'Innomick Delhi';
   }
 
-  const isHyderabad = canonicalBranch.includes('Hyderabad') || dept === 'Executive Director Office';
+  const isHyderabad = canonicalBranch.includes('Hyderabad') || dept === 'Executive Director Office' || dept === 'Hospital Director Office' || branch.includes('Ahmadi');
   const isITDept = !isHyderabad && (dept.toLowerCase().includes('information') || dept.toLowerCase().includes('it') || dept.toLowerCase().includes('technology'));
+
+  const displayTitle = isHyderabad
+    ? 'Al-Salam Al-Ahmadi Hospital - Hospital Director Office'
+    : (isITDept)
+    ? 'Al-Salam Al-Assima Hospital - Information Technology'
+    : `${branch} - ${dept}`;
 
   let docsList = [];
   if (InnomickData.departmentSites && InnomickData.departmentSites[canonicalBranch] && InnomickData.departmentSites[canonicalBranch][dept]) {
@@ -3008,7 +3013,7 @@ function renderDepartmentView() {
     </div>
 
     <div style="font-size: 13.5px; font-weight: 500; color: #1e293b; margin-bottom: 6px;">
-      ${displayBranch} - ${dept}
+      ${displayTitle}
     </div>
 
     <div class="view-breadcrumbs" style="margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between;">
@@ -3024,7 +3029,49 @@ function renderDepartmentView() {
       ${renderListToolbarSearch('Search')}
     </div>
 
-    ${renderSpListTable(docsList, { preset: 'department', allowPublish: isITDept, emptyMsg: AppState.activeDeptFolder ? 'This folder is empty.' : 'No documents found.' })}
+    ${AppState.activeDeptFolder && docsList.length === 0 
+      ? renderEmptyFolderView(AppState.activeDeptFolder) 
+      : renderSpListTable(docsList, { preset: 'department', allowPublish: isITDept, emptyMsg: 'No documents found.' })}
+  `;
+}
+
+function renderEmptyFolderView(folderName) {
+  const parent = getDeptFolderParent(folderName);
+  const backParam = parent ? `'${parent.replace(/'/g, "\\'")}'` : 'null';
+  return `
+    <div class="sp-empty-folder-card" style="margin-top: 14px; padding: 40px 36px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; display: flex; align-items: flex-start; gap: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);">
+      <div style="flex-shrink: 0; width: 88px; height: 88px; border-radius: 22px; background: #007a6c; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 24px rgba(0, 122, 108, 0.22);">
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="#f8eedb" stroke="none">
+          <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/>
+        </svg>
+      </div>
+      <div style="flex: 1;">
+        <div style="display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; background: #e6f5f3; border-radius: 12px; font-size: 11px; font-weight: 700; color: #008272; letter-spacing: 0.8px; margin-bottom: 8px;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #008272;"></span>
+          EMPTY FOLDER
+        </div>
+        <h2 style="font-size: 22px; font-weight: 700; color: #1e293b; margin: 4px 0 6px 0; letter-spacing: -0.2px;">
+          This space is ready for the first document
+        </h2>
+        <p style="font-size: 13.5px; color: #64748b; margin: 0 0 22px 0; line-height: 1.5; max-width: 640px;">
+          This folder is empty. Add files to start building a clean, searchable document workspace for your team.
+        </p>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+          <button type="button" onclick="navigateToDeptFolder(${backParam})" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 12.5px; font-weight: 600; color: #008272; cursor: pointer; transition: all 0.15s ease;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to previous folder
+          </button>
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12.5px; font-weight: 500; color: #475569;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Upload polished deliverables
+          </div>
+          <div style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 12.5px; font-weight: 500; color: #475569;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Everything stays easy to find
+          </div>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -5416,12 +5463,30 @@ function openDirectUploadFolderDrawer() {
   if (backdrop) backdrop.style.display = 'block';
 }
 
-// Folder records of the active department (folders are rows flagged isFolder with a parentFolder)
 function getActiveDeptFolders() {
-  const branch = AppState.activeBranch || 'Innomick Delhi';
-  const dept = AppState.activeDepartment || 'Information Technology';
-  return ((InnomickData.departmentSites && InnomickData.departmentSites[branch] && InnomickData.departmentSites[branch][dept]) || [])
+  let branch = AppState.activeBranch || 'Innomick Delhi';
+  let canonicalBranch = branch;
+  if (branch.includes('Hyderabad') || branch.includes('Ahmadi')) {
+    canonicalBranch = 'Innomick Hyderabad';
+  } else if (branch.includes('Delhi') || branch.includes('Assima')) {
+    canonicalBranch = 'Innomick Delhi';
+  }
+  let dept = AppState.activeDepartment || 'Information Technology';
+  if (dept === 'Hospital Director Office' || canonicalBranch.includes('Hyderabad')) {
+    if (!InnomickData.departmentSites[canonicalBranch] || !InnomickData.departmentSites[canonicalBranch][dept]) {
+      dept = 'Executive Director Office';
+    }
+  }
+  return ((InnomickData.departmentSites && InnomickData.departmentSites[canonicalBranch] && InnomickData.departmentSites[canonicalBranch][dept]) || [])
     .filter(d => d.isFolder);
+}
+
+function getDeptFolderParent(folderName) {
+  if (!folderName) return null;
+  const folders = getActiveDeptFolders();
+  const cur = folders.find(f => f.name === folderName);
+  if (cur && cur.parentFolder) return cur.parentFolder;
+  return null;
 }
 
 // "Direct Uploads > CIO Office > Architecture Standards"
