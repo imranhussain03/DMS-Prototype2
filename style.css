@@ -3481,6 +3481,7 @@ select.sp-form-input.is-readonly {
 
 /* Floating Copilot Badge (Screenshot 5) */
 .floating-copilot-badge {
+  display: none !important;
   position: fixed;
   bottom: 20px;
   right: 24px;

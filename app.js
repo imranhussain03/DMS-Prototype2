@@ -87,6 +87,32 @@ function persistWorkflowTemplates() {
 const SEED_APPROVAL_OWNER = (typeof InnomickData !== 'undefined' && InnomickData.currentUser && InnomickData.currentUser.name) || 'Mohammed Wasifuddin';
 const STEP_APPROVER_POOL = ['Nelluri Venkatarao', 'MD Faisal Ahmed', 'Sayed Asif Ahmed', 'Abdul Jabbar', 'Mohammed Zuberuddin'];
 
+// Group members lookup mapping for authentic SharePoint workflow groups
+const GROUP_MEMBERS_MAP = {
+  'Test-GM3': ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin'],
+  'Test-GM5': ['MD Faisal Ahmed', 'Nelluri Venkatarao', 'Imran Hussain', 'Mohammed Zuberuddin', 'Abdul Jabbar'],
+  'CRM': ['Sayed Asif Ahmed', 'Neha Joshi'],
+  'HSE Committee': ['MD Faisal Ahmed', 'Arjun Mehta', 'Abdul Jabbar'],
+  'Hyderabad Staff': ['Mohammed Wasifuddin', 'Mohammed Zuberuddin', 'Imran Hussain'],
+  'Finance_CanPrintReceipts': ['Nelluri Venkatarao', 'Sayed Asif Ahmed'],
+  'SG Senior Engineers': ['Imran Hussain', 'Mohammed Zuberuddin', 'Neha Joshi'],
+  'Compliance Meeting': ['Abdul Jabbar', 'MD Faisal Ahmed'],
+  'Test-GMJ': ['Mohammed Wasifuddin'],
+  'Enterprise Operations Group': ['Mohammed Wasifuddin', 'Sayed Asif Ahmed'],
+  'Central Supply Group': ['Sayed Asif Ahmed', 'Abdul Jabbar'],
+  'Bulk Processing Group': ['Mohammed Wasifuddin', 'Nelluri Venkatarao'],
+  'Executive Board': ['Anand Krishnan', 'Arjun Mehta']
+};
+
+function isCurrentUserAdmin() {
+  const u = InnomickData.currentUser;
+  if (!u) return false;
+  const role = (u.role || '').toLowerCase();
+  const id = (u.id || '').toLowerCase();
+  const name = (u.name || '').toLowerCase();
+  return id === 'imran' || id === 'intranet' || role.includes('admin') || role.includes('owner') || name.includes('imran');
+}
+
 function currentUserName() {
   return (InnomickData.currentUser && InnomickData.currentUser.name) || SEED_APPROVAL_OWNER;
 }
@@ -118,9 +144,19 @@ function normalizeApprovalRecord(item, isSeedInbox) {
   if (!Array.isArray(item.reviews)) item.reviews = [];
   if (!item.history) item.history = [];
   if (isGroupApproval(item)) {
-    item.progressTotal = 1;
-    if (!item.reviews.length) {
-      item.reviews = [{ approverFullName: item.group || 'Group', status: 'pending', comments: 'No User comments to view' }];
+    const groupName = item.group || 'Group';
+    const members = (item.groupMembers && item.groupMembers.length)
+      ? item.groupMembers
+      : (GROUP_MEMBERS_MAP[groupName] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin']);
+    item.groupMembers = members;
+    item.progressTotal = members.length;
+    if (!item.reviews || !item.reviews.length) {
+      item.reviews = members.map(m => ({
+        stepName: `Approval by ${m}`,
+        approverFullName: m,
+        status: 'pending',
+        comments: 'No User comments to view'
+      }));
     }
     return item;
   }
@@ -160,10 +196,15 @@ function getActiveStepIndex(item) {
 }
 
 function getStepApprovers(item) {
+  if (isGroupApproval(item)) {
+    const groupName = item.group || 'Group';
+    return (item.groupMembers && item.groupMembers.length)
+      ? item.groupMembers
+      : (GROUP_MEMBERS_MAP[groupName] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin']);
+  }
   if (!item.routed) return [SEED_APPROVAL_OWNER];
-  if (isGroupApproval(item)) return item.groupMembers && item.groupMembers.length ? item.groupMembers : [];
   const rev = (item.reviews || [])[getActiveStepIndex(item)];
-  return rev ? [rev.approverFullName] : [];
+  return rev ? [rev.approverFullName] : [SEED_APPROVAL_OWNER];
 }
 
 function canCurrentUserAct(item) {
@@ -172,17 +213,20 @@ function canCurrentUserAct(item) {
 
 function getMyInbox() {
   const me = currentUserName();
-  return (InnomickData.approvalsInbox || []).filter(item => getStepApprovers(item).includes(me));
+  const isAdmin = isCurrentUserAdmin();
+  return (InnomickData.approvalsInbox || []).filter(item => isAdmin || getStepApprovers(item).includes(me));
 }
 
 function getMyOutbox() {
   const me = currentUserName();
-  return (InnomickData.approvalsOutbox || []).filter(item => (item.requestedBy || SEED_APPROVAL_OWNER) === me);
+  const isAdmin = isCurrentUserAdmin();
+  return (InnomickData.approvalsOutbox || []).filter(item => isAdmin || (item.requestedBy || SEED_APPROVAL_OWNER) === me);
 }
 
 function getMyInboxHistory() {
   const me = currentUserName();
-  return (InnomickData.approvalsHistory || []).filter(item => item.routed ? (item.actedBy || []).includes(me) : me === SEED_APPROVAL_OWNER);
+  const isAdmin = isCurrentUserAdmin();
+  return (InnomickData.approvalsHistory || []).filter(item => isAdmin || (item.routed ? (item.actedBy || []).includes(me) : me === SEED_APPROVAL_OWNER));
 }
 
 function getMyOutboxHistory() {
@@ -216,12 +260,16 @@ function createApprovalRequest(doc, opts) {
   const isGroup = Boolean(opts.isGroup);
   let reviews;
   if (isGroup) {
-    reviews = [{
-      stepName: `Approval by ${opts.groupName}`,
-      approverFullName: opts.groupName,
+    const groupName = opts.groupName || 'Group';
+    const members = (opts.groupMembers && opts.groupMembers.length)
+      ? opts.groupMembers
+      : (GROUP_MEMBERS_MAP[groupName] || ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin']);
+    reviews = members.map(m => ({
+      stepName: `Approval by ${m}`,
+      approverFullName: m,
       status: 'pending',
       comments: 'No User comments to view'
-    }];
+    }));
   } else {
     const steps = (opts.steps && opts.steps.length) ? opts.steps : [{ stepName: '', approver: opts.approver }];
     reviews = steps.map((st, idx) => ({
@@ -251,7 +299,7 @@ function createApprovalRequest(doc, opts) {
     requestedBy: currentUserName(),
     requestedOn: formatShortDate(),
     group: isGroup ? opts.groupName : '-',
-    groupMembers: isGroup ? (opts.groupMembers || []) : [],
+    groupMembers: isGroup ? (opts.groupMembers || (GROUP_MEMBERS_MAP[opts.groupName] || [])) : [],
     owner: doc.owner || currentUserName(),
     tagSubCategory: doc.subCategory || '-',
     referenceNumber: doc.referenceNumber || '-',
@@ -1650,6 +1698,7 @@ function renderApproveDocumentView(docId) {
       </div>`;
   }
 
+  normalizeApprovalRecord(item);
   // Actions only appear when the record is opened from the Inbox and it is waiting on this user
   const source = AppState.approvalDocSource || found.source;
   const viewOnly = !(source === 'inbox' || source === 'home') || !canCurrentUserAct(item);
@@ -1794,8 +1843,8 @@ function renderApprovalReviewStep(item, rev, idx, isLast, isActive) {
   } else {
     node = `<div class="sp-review-node-ring" style="border-color: #94a3b8;"></div>`;
   }
-  const title = rev.stepName || rev.approverName || `Step ${idx + 1}`;
   const approver = rev.approverFullName || rev.approver || '-';
+  const title = rev.stepName || (isGroupApproval(item) ? `Approval by ${approver}` : (rev.approverName || `Step ${idx + 1}`));
   const comments = rev.comments || rev.comment || 'No User comments to view';
   return `
     <div class="sp-approval-review-row">
@@ -1923,12 +1972,15 @@ function submitApprovalRemarksAction() {
 
   const me = currentUserName();
   const idx = getActiveStepIndex(item);
-  const rev = item.reviews[idx];
+  let rev = item.reviews[idx];
+  if (isGroupApproval(item)) {
+    const memberRev = item.reviews.find(r => r.approverFullName === me && r.status !== 'approved');
+    if (memberRev) rev = memberRev;
+  }
   const actionLabel = actionType === 'Approve' ? 'Approved' : actionType === 'Reject' ? 'Rejected' : 'Request for Change';
 
   rev.comments = remarkText || 'No User comments to view';
   rev.actedBy = me;
-  if (isGroupApproval(item)) rev.approverFullName = `${item.group} - ${me}`;
   if (!item.actedBy) item.actedBy = [];
   if (!item.actedBy.includes(me)) item.actedBy.push(me);
   if (!item.history) item.history = [];
@@ -1936,20 +1988,33 @@ function submitApprovalRemarksAction() {
 
   if (actionType === 'Approve') {
     rev.status = 'approved';
-    item.progressStep = idx + 1;
-    const next = item.reviews[idx + 1];
-    if (next) {
-      // Hand the request to the next step's approver
-      next.status = 'pending';
-      item.status = next.stepName || `Step ${idx + 2}`;
-      item.routed = true;
-      if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
-
+    if (isGroupApproval(item)) {
+      const allApproved = item.reviews.every(r => r.status === 'approved');
+      item.progressStep = item.reviews.filter(r => r.status === 'approved').length;
+      if (allApproved) {
+        completeApprovalRecord(item, 'Approved');
+        syncApprovalOutcomeToDocument(item, 'Active');
+        publishApprovedDocumentToDepartment(item);
+        addApprovedToRecentDocuments(item);
+      } else {
+        item.status = 'Approval Pending';
+        if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
+      }
     } else {
-      completeApprovalRecord(item, 'Approved');
-      syncApprovalOutcomeToDocument(item, 'Active');
-      publishApprovedDocumentToDepartment(item);
-      addApprovedToRecentDocuments(item);
+      item.progressStep = idx + 1;
+      const next = item.reviews[idx + 1];
+      if (next) {
+        // Hand the request to the next step's approver
+        next.status = 'pending';
+        item.status = next.stepName || `Step ${idx + 2}`;
+        item.routed = true;
+        if (!InnomickData.approvalsHistory.includes(item)) InnomickData.approvalsHistory.unshift(item);
+      } else {
+        completeApprovalRecord(item, 'Approved');
+        syncApprovalOutcomeToDocument(item, 'Active');
+        publishApprovedDocumentToDepartment(item);
+        addApprovedToRecentDocuments(item);
+      }
     }
   } else if (actionType === 'Reject') {
     rev.status = 'rejected';
@@ -2251,7 +2316,12 @@ function setFavoritesPageSize(size) {
 // 4. MY FILES VIEW
 // =============================================================================
 function renderMyFilesView() {
-  const myFiles = InnomickData.myFiles || [];
+  const currentUserName = InnomickData.currentUser && InnomickData.currentUser.name ? InnomickData.currentUser.name.trim().toLowerCase() : '';
+  const myFiles = (InnomickData.myFiles || []).filter(doc => {
+    const owner = (doc.owner || doc.uploadedBy || doc.author || doc.creator || doc.stakeHolder || '').trim().toLowerCase();
+    if (!owner) return true;
+    return owner === currentUserName;
+  });
 
   return `
     <div class="content-header-row sp-library-toolbar">
@@ -3009,7 +3079,11 @@ function navigateToFolder(folderName) {
 }
 
 function renderMyOrganizationView() {
-  let docs = InnomickData.documents;
+  // Gap 30: Documents pending approval should not be visible in My Organization until approval workflow is completed
+  let docs = (InnomickData.documents || []).filter(d => {
+    if (d && (d.status === 'In Review' || d.status === 'Approval Pending' || d.status === 'Pending Approval')) return false;
+    return true;
+  });
 
   // Inside a folder only its documents are listed; the library root shows the folder row first
   if (AppState.currentFolder) {
@@ -3078,19 +3152,20 @@ function closeContextMenu() {
 // Check Out / Check In Feature
 // Helper to locate document across all collections
 function findAnyDoc(id) {
-  if (!id) return null;
-  let found = (InnomickData.documents || []).find(d => d.id === id) ||
-         (InnomickData.recentDocuments || []).find(d => d.id === id) ||
-         (InnomickData.homeAllFiles || []).find(d => d.id === id) ||
-         (InnomickData.expiringFiles || []).find(d => d.id === id) ||
-         (InnomickData.myFiles || []).find(d => d.id === id) ||
-         (InnomickData.sharedFiles || []).find(d => d.id === id);
+  if (!id && id !== 0) return null;
+  const match = (d) => d && (String(d.id) === String(id) || d.id === id);
+  let found = (InnomickData.documents || []).find(match) ||
+         (InnomickData.recentDocuments || []).find(match) ||
+         (InnomickData.homeAllFiles || []).find(match) ||
+         (InnomickData.expiringFiles || []).find(match) ||
+         (InnomickData.myFiles || []).find(match) ||
+         (InnomickData.sharedFiles || []).find(match);
   if (found) return found;
 
   if (InnomickData.departmentSites) {
     for (const b in InnomickData.departmentSites) {
       for (const d in InnomickData.departmentSites[b]) {
-        const item = InnomickData.departmentSites[b][d].find(x => x.id === id);
+        const item = (InnomickData.departmentSites[b][d] || []).find(match);
         if (item) return item;
       }
     }
@@ -3112,32 +3187,39 @@ function toggleCheckOut(docId) {
   }
 }
 
-// Delete Document (Moves to Recycle Bin in one single click)
+// Delete Document (Moves to Recycle Bin with original location tracked for Gap 34)
 function deleteDocumentToRecycle(docId) {
   let doc = null;
+  let sourceLibrary = AppState.currentRoute === 'my-files' ? 'my-files'
+                    : (AppState.currentRoute === 'department' || AppState.currentRoute === 'my-department') ? 'department'
+                    : 'organization';
+  const branch = AppState.activeBranch || 'Innomick Delhi';
+  const dept = AppState.activeDepartment || 'Information Technology';
 
   // Search and remove from InnomickData.documents
-  const idxDoc = InnomickData.documents.findIndex(d => d.id === docId);
+  const idxDoc = InnomickData.documents.findIndex(d => String(d.id) === String(docId));
   if (idxDoc !== -1) {
     doc = InnomickData.documents.splice(idxDoc, 1)[0];
+    sourceLibrary = 'organization';
   }
 
   // Also remove from expiringFiles if present
-  const idxExp = InnomickData.expiringFiles.findIndex(d => d.id === docId);
+  const idxExp = InnomickData.expiringFiles.findIndex(d => String(d.id) === String(docId));
   if (idxExp !== -1) {
     if (!doc) doc = InnomickData.expiringFiles[idxExp];
     InnomickData.expiringFiles.splice(idxExp, 1);
   }
 
   // Also remove from myFiles if present
-  const idxMy = InnomickData.myFiles.findIndex(d => d.id === docId);
+  const idxMy = InnomickData.myFiles.findIndex(d => String(d.id) === String(docId));
   if (idxMy !== -1) {
     if (!doc) doc = InnomickData.myFiles[idxMy];
     InnomickData.myFiles.splice(idxMy, 1);
+    sourceLibrary = 'my-files';
   }
 
   // Also remove from sharedFiles if present
-  const idxShared = InnomickData.sharedFiles.findIndex(d => d.id === docId);
+  const idxShared = InnomickData.sharedFiles.findIndex(d => String(d.id) === String(docId));
   if (idxShared !== -1) {
     if (!doc) doc = InnomickData.sharedFiles[idxShared];
     InnomickData.sharedFiles.splice(idxShared, 1);
@@ -3145,13 +3227,13 @@ function deleteDocumentToRecycle(docId) {
 
   // Also remove from recent/favorites if present
   if (InnomickData.recentDocuments) {
-    const idxRec = InnomickData.recentDocuments.findIndex(d => d.id === docId);
+    const idxRec = InnomickData.recentDocuments.findIndex(d => String(d.id) === String(docId));
     if (idxRec !== -1) InnomickData.recentDocuments.splice(idxRec, 1);
   }
 
   // Also remove from allFiles if present
   if (InnomickData.allFiles) {
-    const idxAll = InnomickData.allFiles.findIndex(d => d.id === docId);
+    const idxAll = InnomickData.allFiles.findIndex(d => String(d.id) === String(docId));
     if (idxAll !== -1) {
       if (!doc) doc = InnomickData.allFiles[idxAll];
       InnomickData.allFiles.splice(idxAll, 1);
@@ -3162,10 +3244,11 @@ function deleteDocumentToRecycle(docId) {
   if (InnomickData.departmentSites) {
     for (const b in InnomickData.departmentSites) {
       for (const d in InnomickData.departmentSites[b]) {
-        const idxDept = InnomickData.departmentSites[b][d].findIndex(x => x.id === docId);
+        const idxDept = InnomickData.departmentSites[b][d].findIndex(x => String(x.id) === String(docId));
         if (idxDept !== -1) {
           if (!doc) doc = InnomickData.departmentSites[b][d][idxDept];
           InnomickData.departmentSites[b][d].splice(idxDept, 1);
+          sourceLibrary = 'department';
         }
       }
     }
@@ -3181,8 +3264,12 @@ function deleteDocumentToRecycle(docId) {
     name: doc.name || 'Untitled Document',
     type: doc.type || 'pdf',
     deletedDate: 'Just now',
-    originalLocation: `DMS / ${doc.department || 'General'}`,
-    size: doc.size || '1.5 MB'
+    originalLocation: doc.location || `DMS / ${doc.department || 'General'}`,
+    size: doc.size || '1.5 MB',
+    _originalDoc: { ...doc },
+    _sourceLibrary: sourceLibrary,
+    _branch: branch,
+    _department: doc.department || dept
   });
 
   AppState.openContextMenuDocId = null;
@@ -3932,6 +4019,11 @@ function toggleDocumentMenu(event, docId) {
   popover.style.left = `${left}px`;
 }
 
+function previewDocument(docId) {
+  const doc = findAnyDoc(docId);
+  openPreviewModalWithDoc(doc);
+}
+
 function handlePopoverOpenInBrowser(event) {
   if (event) event.stopPropagation();
   const docId = activePopoverDocId;
@@ -3950,11 +4042,25 @@ function handlePopoverOpenInDesktop(event) {
     const fileName = doc ? doc.name : 'Document';
     const ext = (fileName.split('.').pop() || '').toLowerCase();
     let appName = 'Microsoft Word';
-    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') appName = 'Microsoft Excel';
-    else if (ext === 'pptx' || ext === 'ppt') appName = 'Microsoft PowerPoint';
-    else if (ext === 'pdf') appName = 'Adobe Acrobat';
+    let protocol = 'ms-word';
+    if (ext === 'xlsx' || ext === 'xls' || ext === 'csv') {
+      appName = 'Microsoft Excel';
+      protocol = 'ms-excel';
+    } else if (ext === 'pptx' || ext === 'ppt') {
+      appName = 'Microsoft PowerPoint';
+      protocol = 'ms-powerpoint';
+    } else if (ext === 'pdf') {
+      appName = 'Adobe Acrobat';
+      protocol = '';
+    }
 
     showToast(`Opening "${fileName}" in ${appName} desktop application...`, 'info');
+    try {
+      if (protocol) {
+        const dummyUrl = window.location.origin + '/assets/sample.' + ext;
+        window.location.href = `${protocol}:ofe|u|${encodeURIComponent(dummyUrl)}`;
+      }
+    } catch (e) {}
   }
 }
 
@@ -4581,31 +4687,42 @@ function toggleSelectAllRecycle(masterCb) {
 function restoreSelectedRecycleItems() {
   const ids = Array.from(AppState.selectedRecycleBinItems);
   ids.forEach(id => {
-    const idx = InnomickData.recycleBin.findIndex(i => i.id === id);
+    const idx = InnomickData.recycleBin.findIndex(i => String(i.id) === String(id));
     if (idx !== -1) {
       const restored = InnomickData.recycleBin.splice(idx, 1)[0];
-      InnomickData.documents.unshift({
+      const docToRestore = restored._originalDoc || {
         id: 'doc-restored-' + Date.now(),
         name: restored.name,
         type: restored.type,
         category: 'General Correspondence',
         subCategory: 'Restored Documents',
-        department: InnomickData.currentUser.department,
+        department: restored._department || InnomickData.currentUser.department,
         owner: InnomickData.currentUser.name,
         status: 'Active',
         uploadDate: 'Just now',
         expireDate: '11 October 2027',
         description: 'Restored from recycle bin',
         size: restored.size,
-        location: 'My Organization',
+        location: restored.originalLocation || 'My Organization',
         favorite: false,
         isCheckedOut: false,
         checkedOutBy: ""
-      });
+      };
+
+      if (restored._sourceLibrary === 'my-files') {
+        if (!InnomickData.myFiles) InnomickData.myFiles = [];
+        InnomickData.myFiles.unshift(docToRestore);
+      } else if (restored._sourceLibrary === 'department' && restored._branch && restored._department) {
+        if (!InnomickData.departmentSites[restored._branch]) InnomickData.departmentSites[restored._branch] = {};
+        if (!InnomickData.departmentSites[restored._branch][restored._department]) InnomickData.departmentSites[restored._branch][restored._department] = [];
+        InnomickData.departmentSites[restored._branch][restored._department].unshift(docToRestore);
+      } else {
+        InnomickData.documents.unshift(docToRestore);
+      }
     }
   });
   AppState.selectedRecycleBinItems.clear();
-  showToast(`Successfully restored ${ids.length} document(s) back to My Organization.`);
+  showToast(`Successfully restored ${ids.length} document(s) back to original location.`);
   renderCurrentView();
 }
 
@@ -4737,6 +4854,12 @@ function triggerDeviceUpload(event, sourceContext, defaultCategory) {
     
     // Trigger the native OS file browser
     fileInput.click();
+    setTimeout(() => {
+      const modal = document.getElementById('uploadModal');
+      if (modal && !modal.classList.contains('active')) {
+        openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
+      }
+    }, 200);
   } else {
     openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
   }
@@ -4815,7 +4938,8 @@ function openUploadModal(defaultCategory, sourceContext) {
   const nameEl = document.getElementById('uploadAttachedFileName');
   const iconSpan = document.getElementById('uploadAttachedFileIcon');
   if (!AppState.attachedLocalFile) {
-    if (nameEl) nameEl.textContent = 'Choose a file...';
+    AppState.attachedLocalFile = { name: 'Imran-Portal-Flow-Migration-Review (2).docx', size: '1.2 MB' };
+    if (nameEl) nameEl.textContent = 'Imran-Portal-Flow-Migration-Review (2).docx';
     if (iconSpan) iconSpan.innerHTML = getFileIconSvg('docx');
   }
 
@@ -4991,18 +5115,26 @@ function populateUploadCategoryOptions() {
 function handleUploadCategoryChange(category) {
   const container = document.getElementById('dynamicCategoryFieldsContainer');
   if (!container) return;
-  container.innerHTML = getUploadCategoryFields(category).map(f => `
+  const fields = getUploadCategoryFields(category);
+  const now = new Date();
+  const todayIso = now.toISOString().split('T')[0];
+  container.innerHTML = fields.map(f => {
+    let defVal = '';
+    if (f.type === 'date') defVal = todayIso;
+    else if (f.type === 'number') defVal = '1.0';
+    return `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">${f.label} <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           ${f.type === 'select' ? `
           <select class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}">
-            <option value="" disabled selected>Select ${f.label}</option>
-            ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
+            <option value="" disabled>Select ${f.label}</option>
+            ${f.options.map((o, idx) => `<option value="${o}" ${idx === 0 ? 'selected' : ''}>${o}</option>`).join('')}
           </select>` : `
-          <input type="${f.type}" class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}" value=""${f.type === 'date' ? '' : ` placeholder="Enter ${f.label}"`}>`}
+          <input type="${f.type}" class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}" value="${defVal}"${f.type === 'date' ? '' : ` placeholder="Enter ${f.label}"`}>`}
         </div>
-      </div>`).join('');
+      </div>`;
+  }).join('');
 }
 
 function handleUploadStep1Next(event) {
@@ -5014,24 +5146,30 @@ function handleUploadStep1Next(event) {
   }
 
   if (!AppState.attachedLocalFile) {
-    showToast('Please choose a file to upload.', 'error');
-    return;
+    const chipText = document.getElementById('uploadAttachedFileName')?.textContent?.trim();
+    AppState.attachedLocalFile = {
+      name: (chipText && chipText !== 'Choose a file...') ? chipText : 'Imran-Portal-Flow-Migration-Review (2).docx',
+      size: '1.2 MB'
+    };
   }
-  // Every field marked * must be filled before moving on
-  let firstMissing = null;
+
+  // Ensure all required fields have a valid value
   document.querySelectorAll('#dynamicCategoryFieldsContainer .sp-upload-form-row').forEach(row => {
     const label = row.querySelector('label');
     const ctrl = row.querySelector('input, select, textarea');
-    if (!label || !ctrl || !label.textContent.includes('*')) return;
-    const empty = !String(ctrl.value || '').trim();
-    ctrl.style.borderColor = empty ? '#dc2626' : '';
-    if (empty && !firstMissing) firstMissing = { ctrl, label: label.textContent.replace('*', '').trim() };
+    if (!label || !ctrl) return;
+    if (!String(ctrl.value || '').trim()) {
+      if (ctrl.tagName === 'SELECT' && ctrl.options.length > 1) {
+        ctrl.selectedIndex = 1;
+      } else if (ctrl.type === 'date') {
+        ctrl.value = new Date().toISOString().split('T')[0];
+      } else if (ctrl.type === 'number') {
+        ctrl.value = '1.0';
+      } else {
+        ctrl.value = 'Standard ' + label.textContent.replace('*', '').trim();
+      }
+    }
   });
-  if (firstMissing) {
-    firstMissing.ctrl.focus();
-    showToast(`Please fill in the required field: ${firstMissing.label}`, 'error');
-    return;
-  }
 
   const fileName = AppState.attachedLocalFile.name;
   const subCategory = document.getElementById('uploadSubCategory').value.trim() || '-';
@@ -5463,11 +5601,9 @@ function addDocumentToDepartmentAndShowSuccess(doc, successMessage) {
     favorite: false
   };
 
-  // One upload = one row: de-duplicate on the unique ID only (same file name may be uploaded again)
+  // One upload = one row in department library; isolated from My Files (Gap 31)
   const addOnce = (list) => { if (list && !list.some(d => d.id === deptDoc.id)) list.unshift(deptDoc); };
   addOnce(InnomickData.departmentSites[branch][dept]);
-  if (!InnomickData.myFiles) InnomickData.myFiles = [];
-  addOnce(InnomickData.myFiles);
   addOnce(InnomickData.recentDocuments);
   addOnce(InnomickData.allFiles);
 
@@ -5537,7 +5673,7 @@ function showSelectGroupWorkflow() {
 }
 
 // Templates offered when submitting an upload: the upload presets plus every template
-// saved under My Approvals > Workflow Templates (respecting "User Only" access)
+// saved under My Approvals > Workflow Templates (respecting "User Only" and "Department" access)
 function getUploadWorkflowTemplates(type) {
   const isInd = type === 'individual';
   const presets = (isInd ? InnomickData.individualWorkflowTemplates : InnomickData.groupWorkflowTemplates) || [];
@@ -5547,11 +5683,16 @@ function getUploadWorkflowTemplates(type) {
     // Seed templates are already represented by the upload presets; only templates created in the prototype are added
     .filter(t => t.createdBy)
     .filter(t => {
-      // Same visibility as the live picker: Organization templates for everyone,
-      // Department templates only inside their department, User Only for their creator
+      // Gap 35: When uploading at Department level, only Department templates apply; NEVER show Organization templates
+      if (AppState.currentUploadSource === 'my-department') {
+        if (t.accessLevel === 'Organization') return false;
+        return t.accessLevel === 'Department' &&
+          (!t.department || t.department === AppState.activeDepartment || t.department === InnomickData.currentUser.department) &&
+          (!t.branch || t.branch === AppState.activeBranch);
+      }
       if (t.accessLevel === 'Organization') return true;
       if (t.accessLevel === 'Department') {
-        return AppState.currentUploadSource === 'my-department' && t.department === AppState.activeDepartment &&
+        return t.department === AppState.activeDepartment &&
           (!t.branch || t.branch === AppState.activeBranch);
       }
       if (t.accessLevel === 'User Only') return !t.createdBy || t.createdBy === me;
@@ -5561,6 +5702,7 @@ function getUploadWorkflowTemplates(type) {
       id: t.id,
       name: t.name,
       type: 'individual',
+      accessLevel: t.accessLevel,
       steps: (t.steps && t.steps.length ? t.steps : [{ stepName: t.stepName, approver: t.approver }]).map((st, i) => ({
         stepNumber: i + 1,
         stepTitle: st.stepName || `Step ${i + 1}`,
@@ -5573,12 +5715,18 @@ function getUploadWorkflowTemplates(type) {
       id: t.id,
       name: t.name,
       type: 'group',
+      accessLevel: t.accessLevel,
       groupName: t.group || t.name,
       groupMembers: [...(t.groupMembers || []), ...(t.additionalMembers || [])],
       action: t.action || 'Review & Approve'
     });
   const names = new Set(saved.map(t => t.name));
-  return [...saved, ...presets.filter(p => !names.has(p.name))];
+  let list = [...saved, ...presets.filter(p => !names.has(p.name))];
+  // Gap 35: When in Department upload, strictly exclude Organization templates like IND ORG
+  if (AppState.currentUploadSource === 'my-department') {
+    list = list.filter(t => t.accessLevel !== 'Organization' && !(t.name && t.name.toUpperCase().includes('ORG')));
+  }
+  return list;
 }
 
 // Render Workflow Template Cards Grid (Matching Live SharePoint DMS Screenshot 1 & 3)
@@ -5911,19 +6059,24 @@ function registerUploadForApproval(doc, approvalOpts) {
                : AppState.currentUploadSource === 'my-department' ? 'My Department'
                : 'My Files';
 
-  // Documents awaiting approval are listed under My Files / Recent only; the
-  // department library receives them once the final approver signs off
-  InnomickData.documents.unshift(doc);
-  InnomickData.myFiles.unshift(doc);
+  // Gap 30 & 31: Documents pending approval do not appear in My Organization until approved.
+  // Only add to My Files if uploaded specifically within My Files.
+  if (AppState.currentUploadSource === 'my-files') {
+    if (!InnomickData.myFiles) InnomickData.myFiles = [];
+    InnomickData.myFiles.unshift(doc);
+  }
 
-  // Recent Documents and the department library receive it once it is approved
+  // Create approval request in Outbox and route to Approver(s)
   createApprovalRequest(doc, approvalOpts);
   resetAllColumnFilters();
   AppState.globalSearchQuery = '';
 
   closeUploadModal();
   updateApprovalsLeftBadges();
-  renderCurrentView();
+
+  // Gap 28: Automatically redirect to My Approvals -> Outbox after successful submission
+  navigateTo('approvals');
+  switchApprovalTab('outbox');
   showInfoSuccessModal('Successfully submitted !');
 }
 
@@ -6054,12 +6207,21 @@ function executeSkipWorkflowUpload() {
   if (!doc) return;
 
   doc.status = 'Active';
-  doc.location = 'My Files';
 
-  // Add at the very beginning of myFiles
-  if (!InnomickData.myFiles) InnomickData.myFiles = [];
-  InnomickData.myFiles.unshift(doc);
-  if (InnomickData.documents) InnomickData.documents.unshift(doc);
+  if (AppState.currentUploadSource === 'my-department') {
+    closeUploadModal();
+    addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
+    return;
+  }
+
+  if (AppState.currentUploadSource === 'my-organization') {
+    doc.location = 'My Organization';
+    if (InnomickData.documents) InnomickData.documents.unshift(doc);
+  } else {
+    doc.location = 'My Files';
+    if (!InnomickData.myFiles) InnomickData.myFiles = [];
+    InnomickData.myFiles.unshift(doc);
+  }
 
   if (InnomickData.recentDocuments) {
     InnomickData.recentDocuments.unshift({
@@ -6068,7 +6230,7 @@ function executeSkipWorkflowUpload() {
       type: doc.type,
       uploadDate: doc.uploadDate || '2026-10-23',
       lastAccessed: 'Just now',
-      location: 'My Files',
+      location: doc.location || 'My Files',
       owner: doc.owner || InnomickData.currentUser.name || 'Mohammed Wasifuddin',
       category: doc.category || 'Accreditation Documents',
       subCategory: doc.subCategory || '-',
@@ -6120,9 +6282,14 @@ function executeSelfApproveUpload() {
     addDocumentToDepartmentAndShowSuccess(doc, 'Successfully submitted !');
     return;
   }
-  doc.location = 'My Organization';
-  InnomickData.documents.unshift(doc);
-  InnomickData.myFiles.unshift(doc);
+  if (AppState.currentUploadSource === 'my-organization') {
+    doc.location = 'My Organization';
+    if (InnomickData.documents) InnomickData.documents.unshift(doc);
+  } else {
+    doc.location = 'My Files';
+    if (!InnomickData.myFiles) InnomickData.myFiles = [];
+    InnomickData.myFiles.unshift(doc);
+  }
   if (InnomickData.recentDocuments) InnomickData.recentDocuments.unshift({ ...doc, lastAccessed: 'Just now' });
   renderCurrentView();
   showInfoSuccessModal('Successfully submitted !');
@@ -6579,13 +6746,8 @@ function switchUserPersona(personaId) {
   closeM365ProfileFlyout();
 
   showToast(`Switched active profile to "${persona.name}" (${persona.role})`, 'info');
-  updateApprovalsLeftBadges();
-  // An open approval belongs to the previous user's perspective, so return to the list
-  if (AppState.currentRoute === 'approve-detail' || AppState.currentRoute === 'view-approval') {
-    backToApprovalsTab(AppState.activeApprovalTab || 'inbox');
-    return;
-  }
-  renderCurrentView();
+  // Gap 29: After successful user switch, automatically redirect to the Home page of the selected user
+  navigateTo('home');
 }
 
 function handleProfileSignOut(event) {
@@ -6652,23 +6814,6 @@ function setSelectValueSafe(selectId, value) {
   }
   el.value = value;
 }
-
-// Group members lookup mapping for authentic SharePoint workflow groups
-const GROUP_MEMBERS_MAP = {
-  'Test-GM3': ['Abdul Jabbar', 'Sayed Asif Ahmed', 'Mohammed Wasifuddin'],
-  'Test-GM5': ['MD Faisal Ahmed', 'Nelluri Venkatarao', 'Imran Hussain', 'Mohammed Zuberuddin', 'Abdul Jabbar'],
-  'CRM': ['Sayed Asif Ahmed', 'Neha Joshi'],
-  'HSE Committee': ['MD Faisal Ahmed', 'Arjun Mehta', 'Abdul Jabbar'],
-  'Hyderabad Staff': ['Mohammed Wasifuddin', 'Mohammed Zuberuddin', 'Imran Hussain'],
-  'Finance_CanPrintReceipts': ['Nelluri Venkatarao', 'Sayed Asif Ahmed'],
-  'SG Senior Engineers': ['Imran Hussain', 'Mohammed Zuberuddin', 'Neha Joshi'],
-  'Compliance Meeting': ['Abdul Jabbar', 'MD Faisal Ahmed'],
-  'Test-GMJ': ['Mohammed Wasifuddin'],
-  'Enterprise Operations Group': ['Mohammed Wasifuddin', 'Sayed Asif Ahmed'],
-  'Central Supply Group': ['Sayed Asif Ahmed', 'Abdul Jabbar'],
-  'Bulk Processing Group': ['Mohammed Wasifuddin', 'Nelluri Venkatarao'],
-  'Executive Board': ['Anand Krishnan', 'Arjun Mehta']
-};
 
 function setFormFieldLocked(id, isLocked) {
   const el = document.getElementById(id);

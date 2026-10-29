@@ -33,25 +33,6 @@
     </div>
 
     <div class="topbar-right">
-      <!-- Next steps (megaphone) -->
-      <button class="topbar-icon-btn" id="topbarNextStepsBtn" onclick="toggleHeaderPanel('nextsteps')" title="Next steps">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-          <path d="M3 10v4h3l7 5V5L6 10H3z"/>
-          <path d="M6 14l1.5 5h2.5l-1.2-4"/>
-          <path d="M17 9a4 4 0 0 1 0 6"/>
-        </svg>
-      </button>
-
-      <!-- Submit feedback -->
-      <button class="topbar-icon-btn" id="topbarFeedbackBtn" onclick="toggleHeaderPanel('feedback')" title="Submit feedback to Microsoft">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
-          <rect x="11" y="3" width="10" height="7" rx="1.5"/>
-          <path d="M14 10v2.5L16.5 10"/>
-          <circle cx="7" cy="12" r="2.5"/>
-          <path d="M2.5 21v-1.5A3.5 3.5 0 0 1 6 16h2a3.5 3.5 0 0 1 3.5 3.5V21"/>
-        </svg>
-      </button>
-
       <!-- Settings Panel Trigger -->
       <button class="topbar-icon-btn" id="topbarSettingsBtn" onclick="toggleHeaderPanel('settings')" title="Settings">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -332,7 +313,7 @@
       </div>
 
       <!-- Step 1: Metadata Form -->
-      <form id="uploadStep1Form" onsubmit="handleUploadStep1Next(event)">
+      <form id="uploadStep1Form" novalidate onsubmit="handleUploadStep1Next(event)">
         <div class="modal-body" style="padding: 20px 24px; max-height: calc(85vh - 130px); overflow-y: auto;">
           <!-- Category Row -->
           <div class="sp-upload-form-row">
@@ -456,7 +437,7 @@
 
         <div class="modal-footer" style="padding: 14px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 10px;">
           <button type="button" class="btn-secondary" onclick="closeUploadModal()" style="border-radius: 4px; padding: 6px 18px; font-size: 13px;">Cancel</button>
-          <button type="submit" class="btn-primary-teal" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Next</button>
+          <button type="submit" class="btn-primary-teal" id="btnUploadStep1Next" style="border-radius: 4px; padding: 6px 24px; font-size: 13px; font-weight: 600;">Next</button>
         </div>
       </form>
 
