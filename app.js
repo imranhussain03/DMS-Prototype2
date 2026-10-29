@@ -285,6 +285,9 @@ function createApprovalRequest(doc, opts) {
     routed: true,
     _normalized: true,
     docId: doc.id,
+    sourceUploadSource: AppState.currentUploadSource || 'my-department',
+    sourceLocation: doc.location || (AppState.currentUploadSource === 'my-files' ? 'My Files' : AppState.currentUploadSource === 'my-organization' ? 'My Organization' : 'My Department'),
+    _sourceDoc: { ...doc },
     sourceBranch: AppState.currentUploadSource === 'my-department' ? AppState.activeBranch : null,
     sourceDepartment: AppState.currentUploadSource === 'my-department' ? AppState.activeDepartment : null,
     name: doc.name,
@@ -1903,39 +1906,61 @@ function closeApprovalRemarksModal() {
   }
 }
 
-// Publish the approved document to the department it was uploaded from
+// Publish the approved document to the library it was uploaded from
 function publishApprovedDocumentToDepartment(item) {
-  if (!item || !item.sourceBranch || !item.sourceDepartment) return;
-  const branch = item.sourceBranch;
-  const dept = item.sourceDepartment;
+  if (!item) return;
 
-  if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
-  if (!InnomickData.departmentSites[branch]) InnomickData.departmentSites[branch] = {};
-  if (!InnomickData.departmentSites[branch][dept]) InnomickData.departmentSites[branch][dept] = [];
-
-  const original = (InnomickData.documents || []).find(d => d.id === item.docId) || {};
+  const original = item._sourceDoc || (InnomickData.documents || []).find(d => d.id === item.docId) || {};
   const approvedDoc = {
     ...original,
-    id: item.docId || nextDocumentId(),
+    id: item.docId || original.id || nextDocumentId(),
     name: item.name || item.documentName || 'Document.docx',
     type: original.type || ((item.name || '').split('.').pop() || 'docx').toLowerCase(),
-    category: item.category || '-',
+    category: item.category || original.category || '-',
     subCategory: item.tagSubCategory || original.subCategory || '-',
-    department: dept,
-    owner: item.owner || item.requestedBy,
+    department: item.department || original.department || (item.sourceDepartment || InnomickData.currentUser.department),
+    owner: item.owner || item.requestedBy || original.owner,
     status: 'Active',
     stakeHolder: item.stakeholder || original.stakeHolder || '-',
-    referenceNumber: item.referenceNumber || '-',
-    vendor: item.vendor || '-',
-    description: item.description || '-',
-    folder: '-',
-    parentFolder: null,
-    location: `${dept}`,
+    referenceNumber: item.referenceNumber || original.referenceNumber || '-',
+    vendor: item.vendor || original.vendor || '-',
+    description: item.description || original.description || '-',
+    folder: original.folder || '-',
+    parentFolder: original.parentFolder || null,
+    location: item.sourceLocation || original.location || (item.sourceDepartment || 'My Files'),
     favorite: false
   };
 
-  if (!InnomickData.departmentSites[branch][dept].some(d => d.id === approvedDoc.id)) {
-    InnomickData.departmentSites[branch][dept].unshift(approvedDoc);
+  // If originally from My Files:
+  if (item.sourceUploadSource === 'my-files' || item.sourceLocation === 'My Files') {
+    if (!InnomickData.myFiles) InnomickData.myFiles = [];
+    if (!InnomickData.myFiles.some(d => d.id === approvedDoc.id)) {
+      InnomickData.myFiles.unshift(approvedDoc);
+    }
+    return;
+  }
+
+  // If originally from Department:
+  if (item.sourceBranch && item.sourceDepartment) {
+    const branch = item.sourceBranch;
+    const dept = item.sourceDepartment;
+
+    if (!InnomickData.departmentSites) InnomickData.departmentSites = {};
+    if (!InnomickData.departmentSites[branch]) InnomickData.departmentSites[branch] = {};
+    if (!InnomickData.departmentSites[branch][dept]) InnomickData.departmentSites[branch][dept] = [];
+
+    if (!InnomickData.departmentSites[branch][dept].some(d => d.id === approvedDoc.id)) {
+      InnomickData.departmentSites[branch][dept].unshift(approvedDoc);
+    }
+    return;
+  }
+
+  // If originally from My Organization:
+  if (item.sourceUploadSource === 'my-organization' || item.sourceLocation === 'My Organization') {
+    if (!InnomickData.documents) InnomickData.documents = [];
+    if (!InnomickData.documents.some(d => d.id === approvedDoc.id)) {
+      InnomickData.documents.unshift(approvedDoc);
+    }
   }
 }
 
@@ -4843,23 +4868,8 @@ function triggerDeviceUpload(event, sourceContext, defaultCategory) {
 
   const fileInput = document.getElementById('mainDeviceFileInput');
   if (fileInput) {
-    fileInput.value = '';
-    
-    // When the user cancels out of the OS dialog without choosing, open the modal anyway so they are not blocked
-    const handleCancel = () => {
-      openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
-      fileInput.removeEventListener('cancel', handleCancel);
-    };
-    fileInput.addEventListener('cancel', handleCancel, { once: true });
-    
-    // Trigger the native OS file browser
+    // Trigger the native OS file browser: user picks a file, then handleMainDeviceFileSelected opens the upload document modal
     fileInput.click();
-    setTimeout(() => {
-      const modal = document.getElementById('uploadModal');
-      if (modal && !modal.classList.contains('active')) {
-        openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
-      }
-    }, 200);
   } else {
     openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
   }
@@ -5111,30 +5121,23 @@ function populateUploadCategoryOptions() {
   sel.dataset.populated = '1';
 }
 
-// Category-specific fields start blank every time the category changes
+// Category-specific fields start completely blank every time the category changes (Gap 2 & Gap 3)
 function handleUploadCategoryChange(category) {
   const container = document.getElementById('dynamicCategoryFieldsContainer');
   if (!container) return;
   const fields = getUploadCategoryFields(category);
-  const now = new Date();
-  const todayIso = now.toISOString().split('T')[0];
-  container.innerHTML = fields.map(f => {
-    let defVal = '';
-    if (f.type === 'date') defVal = todayIso;
-    else if (f.type === 'number') defVal = '1.0';
-    return `
+  container.innerHTML = fields.map(f => `
       <div class="sp-upload-form-row">
         <label class="sp-upload-form-label">${f.label} <span style="color: #dc2626;">*</span></label>
         <div class="sp-upload-form-control">
           ${f.type === 'select' ? `
           <select class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}">
-            <option value="" disabled>Select ${f.label}</option>
-            ${f.options.map((o, idx) => `<option value="${o}" ${idx === 0 ? 'selected' : ''}>${o}</option>`).join('')}
+            <option value="" disabled selected>Select ${f.label}</option>
+            ${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}
           </select>` : `
-          <input type="${f.type}" class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}" value="${defVal}"${f.type === 'date' ? '' : ` placeholder="Enter ${f.label}"`}>`}
+          <input type="${f.type}" class="sp-form-input" id="dyn_${f.key}" data-field-key="${f.key}" value=""${f.type === 'date' ? '' : ` placeholder="Enter ${f.label}"`}>`}
         </div>
-      </div>`;
-  }).join('');
+      </div>`).join('');
 }
 
 function handleUploadStep1Next(event) {
@@ -5152,24 +5155,6 @@ function handleUploadStep1Next(event) {
       size: '1.2 MB'
     };
   }
-
-  // Ensure all required fields have a valid value
-  document.querySelectorAll('#dynamicCategoryFieldsContainer .sp-upload-form-row').forEach(row => {
-    const label = row.querySelector('label');
-    const ctrl = row.querySelector('input, select, textarea');
-    if (!label || !ctrl) return;
-    if (!String(ctrl.value || '').trim()) {
-      if (ctrl.tagName === 'SELECT' && ctrl.options.length > 1) {
-        ctrl.selectedIndex = 1;
-      } else if (ctrl.type === 'date') {
-        ctrl.value = new Date().toISOString().split('T')[0];
-      } else if (ctrl.type === 'number') {
-        ctrl.value = '1.0';
-      } else {
-        ctrl.value = 'Standard ' + label.textContent.replace('*', '').trim();
-      }
-    }
-  });
 
   const fileName = AppState.attachedLocalFile.name;
   const subCategory = document.getElementById('uploadSubCategory').value.trim() || '-';
@@ -6059,12 +6044,7 @@ function registerUploadForApproval(doc, approvalOpts) {
                : AppState.currentUploadSource === 'my-department' ? 'My Department'
                : 'My Files';
 
-  // Gap 30 & 31: Documents pending approval do not appear in My Organization until approved.
-  // Only add to My Files if uploaded specifically within My Files.
-  if (AppState.currentUploadSource === 'my-files') {
-    if (!InnomickData.myFiles) InnomickData.myFiles = [];
-    InnomickData.myFiles.unshift(doc);
-  }
+  // Documents pending approval do not appear in My Files, My Organization, or Department until approval completes
 
   // Create approval request in Outbox and route to Approver(s)
   createApprovalRequest(doc, approvalOpts);
