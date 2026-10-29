@@ -14,7 +14,7 @@ npm start
 node server.js
 ```
 The prototype will be live at:
-👉 **[http://localhost:3000](http://localhost:3000)**
+👉 **[http://localhost:5373](http://localhost:5373)**
 
 *(To use a custom port, set the PORT environment variable: `PORT=8080 node server.js`)*
 
