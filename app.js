@@ -529,6 +529,7 @@ function resetListViewState() {
   AppState.departmentSearchQuery = '';
   AppState.listSortKey = null;
   AppState.listPage = 1;
+  AppState.favoritesPage = 1;
   AppState.openContextMenuDocId = null;
   window._lastFilterFocus = null;
   window._lastSearchFocus = null;
@@ -2202,7 +2203,30 @@ function getAllFavoriteDocuments() {
     }
   };
 
-  // 1. Department documents (Executive Director Office, IT, etc.)
+  // 1. Documents explicitly favorited recently by user in this session: put them first at the top
+  if (AppState.recentlyFavoritedIds && AppState.recentlyFavoritedIds.length) {
+    AppState.recentlyFavoritedIds.forEach(id => {
+      const d = findAnyDoc(id);
+      addIfFav(d);
+    });
+  }
+
+  // 2. Personal My Files marked favorite for active user (e.g. Wasif): put them at top of favorites
+  const currentUserName = InnomickData.currentUser && InnomickData.currentUser.name ? InnomickData.currentUser.name.trim().toLowerCase() : '';
+  (InnomickData.myFiles || []).forEach(d => {
+    const owner = (d.owner || d.uploadedBy || '').trim().toLowerCase();
+    if (!owner || owner === currentUserName) {
+      addIfFav(d);
+    }
+  });
+
+  // 3. Other My Files
+  (InnomickData.myFiles || []).forEach(addIfFav);
+
+  // 4. Main documents collection
+  (InnomickData.documents || []).forEach(addIfFav);
+
+  // 5. Department documents (Executive Director Office, IT, etc.)
   if (InnomickData.departmentSites) {
     for (const b in InnomickData.departmentSites) {
       for (const d in InnomickData.departmentSites[b]) {
@@ -2211,14 +2235,10 @@ function getAllFavoriteDocuments() {
     }
   }
 
-  // 2. Main documents collection
-  (InnomickData.documents || []).forEach(addIfFav);
-
-  // 3. Other collections
+  // 6. Other collections
   (InnomickData.recentDocuments || []).forEach(addIfFav);
   (InnomickData.homeAllFiles || []).forEach(addIfFav);
   (InnomickData.allFiles || []).forEach(addIfFav);
-  (InnomickData.myFiles || []).forEach(addIfFav);
   (InnomickData.sharedFiles || []).forEach(addIfFav);
   (InnomickData.expiringFiles || []).forEach(addIfFav);
 
@@ -4768,6 +4788,14 @@ function toggleFavorite(id) {
   const newFavStatus = !doc.favorite;
   doc.favorite = newFavStatus;
 
+  // Track in recently favorited list so it immediately appears at the top of My Favorites
+  if (!AppState.recentlyFavoritedIds) AppState.recentlyFavoritedIds = [];
+  if (newFavStatus) {
+    AppState.recentlyFavoritedIds = [String(id), ...AppState.recentlyFavoritedIds.filter(x => x !== String(id))];
+  } else {
+    AppState.recentlyFavoritedIds = AppState.recentlyFavoritedIds.filter(x => x !== String(id));
+  }
+
   // Synchronize across all collections
   const syncDocFav = (item) => {
     if (item && String(item.id) === String(id)) item.favorite = newFavStatus;
@@ -4795,12 +4823,7 @@ function toggleFavorite(id) {
 }
 
 function toggleMyFileFavorite(id) {
-  const doc = InnomickData.myFiles.find(d => d.id === id);
-  if (doc) {
-    doc.favorite = !doc.favorite;
-    showToast(`${doc.favorite ? 'Added to' : 'Removed from'} Favorites: ${doc.name}`);
-    renderCurrentView();
-  }
+  toggleFavorite(id);
 }
 
 function handleSearch(query, inputEl) {
