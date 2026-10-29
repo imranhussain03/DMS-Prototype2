@@ -36,17 +36,18 @@
       <!-- 1. Next Steps / What's New (Megaphone) Trigger -->
       <button class="topbar-icon-btn" id="topbarNextStepsBtn" onclick="toggleHeaderPanel('nextsteps')" title="What's new">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M11 5L6 9H2v6h4l5 4V5z"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M3 11v2a1 1 0 0 0 1 1h3l7 5V5L7 10H4a1 1 0 0 0-1 1z"/>
+          <path d="M7 14l1.5 5h2.5L9.5 14"/>
         </svg>
       </button>
 
-      <!-- 2. Copy Link to Page Trigger -->
-      <button class="topbar-icon-btn" id="topbarLinkBtn" onclick="copyCurrentPageLink()" title="Copy link">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      <!-- 2. Submit Feedback Panel Trigger -->
+      <button class="topbar-icon-btn" id="topbarFeedbackBtn" onclick="toggleHeaderPanel('feedback')" title="Feedback">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="11" y="3" width="10" height="7" rx="1.5"/>
+          <path d="M14 10v2.5L16.5 10"/>
+          <circle cx="7" cy="11.5" r="2.5"/>
+          <path d="M2.5 20.5v-1.5A3.5 3.5 0 0 1 6 15.5h2a3.5 3.5 0 0 1 3.5 3.5v1.5"/>
         </svg>
       </button>
 
@@ -1793,7 +1794,7 @@
   <div class="toast-container" id="toastContainer"></div>
 
   <!-- Scripts -->
-  <script src="data.js?v=20261029_v41"></script>
-  <script src="app.js?v=20261029_v41"></script>
+  <script src="data.js?v=20261029_v42"></script>
+  <script src="app.js?v=20261029_v42"></script>
 </body>
 </html>

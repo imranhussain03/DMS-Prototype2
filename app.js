@@ -809,7 +809,6 @@ function renderHomeView() {
             <path d="m9 15 2 2 4-4"/>
           </svg>
           Approvals
-          <span class="tab-badge">${getMyInbox().length}</span>
         </button>
       </div>
       <div class="tabs-actions">
@@ -1183,7 +1182,6 @@ function renderHomeApprovalsTab() {
             <path d="m9 15 2 2 4-4"/>
           </svg>
           Approvals
-          <span class="tab-badge">${getMyInbox().length}</span>
         </button>
       </div>
     </div>
