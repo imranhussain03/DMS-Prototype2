@@ -5332,10 +5332,9 @@ function updateStep2WorkflowFooter() {
   if (skipBtn) {
     skipBtn.style.display = isMyFiles ? 'inline-block' : 'none';
   }
-  // Department / Organization uploads offer "Self Approve" (as in the live DMS)
   const selfBtn = document.getElementById('btnSelfApprove');
   if (selfBtn) {
-    selfBtn.style.display = isMyFiles ? 'none' : 'inline-block';
+    selfBtn.style.display = 'none';
   }
 }
 
