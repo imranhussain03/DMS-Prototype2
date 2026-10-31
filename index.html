@@ -1224,15 +1224,17 @@
         </div>
 
         <!-- Center Controls: Page Navigation & Zoom -->
-        <div style="display: flex; align-items: center; gap: 10px; background: #0f172a; padding: 5px 14px; border-radius: 4px; font-size: 12px; color: #cbd5e1;">
-          <button type="button" class="viewer-btn" title="Previous Page" onclick="changeViewerPage(-1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <span id="viewerPageIndicator" style="font-weight: 500;">Page 1 of 2</span>
-          <button type="button" class="viewer-btn" title="Next Page" onclick="changeViewerPage(1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <span style="color: #475569;">|</span>
+        <div id="viewerControls" style="display: flex; align-items: center; gap: 10px; background: #0f172a; padding: 5px 14px; border-radius: 4px; font-size: 12px; color: #cbd5e1;">
+          <span id="viewerPageControls" style="display: contents;">
+            <button type="button" class="viewer-btn" title="Previous Page" onclick="changeViewerPage(-1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <span id="viewerPageIndicator" style="font-weight: 500;">Page 1 of 2</span>
+            <button type="button" class="viewer-btn" title="Next Page" onclick="changeViewerPage(1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; display: flex; align-items: center; padding: 2px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <span style="color: #475569;">|</span>
+          </span>
           <button type="button" class="viewer-btn" title="Zoom Out" onclick="adjustViewerZoom(-0.1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&minus;</button>
           <span id="viewerZoomIndicator" style="font-weight: 500; min-width: 42px; text-align: center;">100%</span>
           <button type="button" class="viewer-btn" title="Zoom In" onclick="adjustViewerZoom(0.1)" style="background: none; border: none; color: #cbd5e1; cursor: pointer; font-weight: bold; font-size: 14px; padding: 0 4px;">&#43;</button>
@@ -1794,6 +1796,6 @@
 
   <!-- Scripts -->
   <script src="data.js?v=20261029_v46"></script>
-  <script src="app.js?v=20261029_v46"></script>
+  <script src="app.js?v=20261101_v47"></script>
 </body>
 </html>

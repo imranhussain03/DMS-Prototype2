@@ -2056,7 +2056,10 @@ function publishApprovedDocumentToDepartment(item) {
   // If originally from My Files:
   if (isMyFiles) {
     if (!InnomickData.myFiles) InnomickData.myFiles = [];
-    if (!InnomickData.myFiles.some(d => d.id === approvedDoc.id || d.name === approvedDoc.name)) {
+    const myFilesIdx = InnomickData.myFiles.findIndex(d => d.id === approvedDoc.id || d.name === approvedDoc.name);
+    if (myFilesIdx !== -1) {
+      InnomickData.myFiles[myFilesIdx] = approvedDoc;
+    } else {
       InnomickData.myFiles.unshift(approvedDoc);
     }
     return;
@@ -5138,6 +5141,8 @@ function handleMainDeviceFileSelected(input) {
     AppState.attachedLocalFile = file;
     showToast(`File "${file.name}" selected from device.`, 'info');
   }
+  // Clear the picker so choosing the same file again still fires onchange
+  input.value = '';
   // Open the Upload Document details modal now that the file has been chosen from device
   openUploadModal(AppState.pendingUploadDefaultCategory, AppState.currentUploadSource);
 }
@@ -5250,6 +5255,7 @@ function handleFileChosen(input) {
     AppState.attachedLocalFile = file;
     showToast(`File "${file.name}" attached.`, 'info');
   }
+  input.value = '';
 }
 
 // Category-specific upload fields, captured from the live DMS upload form.
@@ -5459,6 +5465,7 @@ function handleUploadStep1Next(event) {
     checkedOutBy: '',
     sharedWith: []
   };
+  rememberUploadedFile(AppState.pendingUploadData.id, AppState.attachedLocalFile);
 
   // Store every category-specific field under its list column key
   document.querySelectorAll('#dynamicCategoryFieldsContainer [data-field-key]').forEach(el => {
@@ -5813,6 +5820,7 @@ function executeDirectUploadConfirm() {
     findingsSummary: baseData.findingsSummary || '',
     actionStatus: baseData.actionStatus || ''
   };
+  rememberUploadedFile(newDoc.id, UploadedFiles.get(String(baseData.id)));
 
   // Close upload modal
   closeUploadModal();
@@ -7927,8 +7935,18 @@ function processApprovalDecision(id, decision, comments) {
 
 // Document Preview Modal
 function previewDocument(id) {
-  const doc = findAnyDoc(id) || InnomickData.documents[0];
+  const doc = findAnyDoc(id) || findPendingApprovalDoc(id) || InnomickData.documents[0];
   openPreviewModalWithDoc(doc);
+}
+
+// Documents awaiting approval are not listed in any library yet; their record lives on the approval request
+function findPendingApprovalDoc(id) {
+  const lists = [InnomickData.approvalsInbox, InnomickData.approvalsOutbox, InnomickData.approvalsHistory, InnomickData.approvalsOutboxHistory];
+  for (const list of lists) {
+    const item = (list || []).find(x => x._sourceDoc && String(x.docId) === String(id));
+    if (item) return item._sourceDoc;
+  }
+  return null;
 }
 
 function previewMyFile(id) {
@@ -8023,6 +8041,10 @@ function closePreviewModal() {
   if (modal) {
     modal.classList.remove('active');
   }
+  viewerRenderToken++;
+  releaseViewerObjectUrl();
+  const body = document.getElementById('previewModalViewerBody');
+  if (body) body.innerHTML = '';
 }
 
 function changeViewerPage(delta) {
@@ -8041,7 +8063,211 @@ function adjustViewerZoom(delta) {
   const container = document.getElementById('viewerSheetContainer');
   if (container) {
     container.style.transform = `scale(${currentViewerZoom})`;
-    container.style.transformOrigin = 'top center';
+    container.style.transformOrigin = getUploadedFile(currentViewerDoc) ? 'top left' : 'top center';
+  }
+}
+
+// =============================================================================
+// UPLOADED FILE STORE & VIEWER
+// Keyed by document id, because every list holds its own copy of a document record
+// but they all share the id. In memory only, like the document lists themselves.
+// =============================================================================
+const UploadedFiles = new Map();
+
+function rememberUploadedFile(docId, file) {
+  if (!(file instanceof File)) return;
+  const key = String(docId);
+  UploadedFiles.set(key, file);
+  // Keep a private copy so later edits to the file on disk cannot change or break the uploaded version
+  file.arrayBuffer().then(buffer => {
+    if (UploadedFiles.get(key) === file) UploadedFiles.set(key, new File([buffer], file.name, { type: file.type }));
+  }).catch(() => {});
+}
+
+function getUploadedFile(doc) {
+  return (doc && UploadedFiles.get(String(doc.id))) || null;
+}
+
+const VIEWER_LIBRARIES = {
+  mammoth: 'assets/vendor/mammoth.browser.min.js',
+  XLSX: 'assets/vendor/xlsx.full.min.js',
+  JSZip: 'assets/vendor/jszip.min.js'
+};
+const viewerLibraryLoads = {};
+
+function loadViewerLibrary(globalName) {
+  if (!viewerLibraryLoads[globalName]) {
+    viewerLibraryLoads[globalName] = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = VIEWER_LIBRARIES[globalName];
+      script.onload = () => resolve(window[globalName]);
+      script.onerror = () => {
+        delete viewerLibraryLoads[globalName];
+        reject(new Error(`Could not load ${globalName}`));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return viewerLibraryLoads[globalName];
+}
+
+const VIEWER_IMAGE_TYPES = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'];
+const VIEWER_TEXT_TYPES = ['txt', 'log', 'md', 'json', 'xml', 'html', 'htm'];
+const VIEWER_SHEET_TYPES = ['xlsx', 'xlsm', 'xlsb', 'xls', 'csv', 'ods'];
+
+let viewerObjectUrl = null;
+let viewerRenderToken = 0;
+
+function releaseViewerObjectUrl() {
+  if (viewerObjectUrl) URL.revokeObjectURL(viewerObjectUrl);
+  viewerObjectUrl = null;
+}
+
+async function convertDocxToHtml(file) {
+  const mammoth = await loadViewerLibrary('mammoth');
+  const result = await mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  return result.value;
+}
+
+async function convertSheetToHtml(file) {
+  const XLSX = await loadViewerLibrary('XLSX');
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+  return workbook.SheetNames.map(sheetName => `
+    <h2>${escapeHtmlDept(sheetName)}</h2>
+    ${XLSX.utils.sheet_to_html(workbook.Sheets[sheetName], { header: '', footer: '' })}
+  `).join('');
+}
+
+// Slide text and pictures in presentation order (the slide layout itself is not reproduced)
+async function convertPptxToHtml(file) {
+  const JSZip = await loadViewerLibrary('JSZip');
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const readXml = async (path) => {
+    const entry = zip.file(path);
+    return entry ? new DOMParser().parseFromString(await entry.async('text'), 'application/xml') : null;
+  };
+  const readTargets = async (relsPath, basePath) => {
+    const targets = {};
+    const rels = await readXml(relsPath);
+    if (rels) {
+      Array.from(rels.getElementsByTagName('Relationship')).forEach(rel => {
+        const resolved = new URL(rel.getAttribute('Target'), `http://zip/${basePath}`).pathname.slice(1);
+        targets[rel.getAttribute('Id')] = decodeURIComponent(resolved);
+      });
+    }
+    return targets;
+  };
+  const imageMime = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', bmp: 'image/bmp' };
+
+  const presentation = await readXml('ppt/presentation.xml');
+  const slideTargets = await readTargets('ppt/_rels/presentation.xml.rels', 'ppt/presentation.xml');
+  const slidePaths = Array.from(presentation.getElementsByTagName('p:sldId')).map(s => slideTargets[s.getAttribute('r:id')]);
+
+  const slides = [];
+  for (let i = 0; i < slidePaths.length; i++) {
+    const slidePath = slidePaths[i];
+    const slide = await readXml(slidePath);
+    if (!slide) continue;
+    const paragraphs = Array.from(slide.getElementsByTagName('a:p'))
+      .map(p => Array.from(p.getElementsByTagName('a:t')).map(t => t.textContent).join(''))
+      .filter(text => text.trim());
+
+    const slideName = slidePath.split('/').pop();
+    const mediaTargets = await readTargets(`ppt/slides/_rels/${slideName}.rels`, slidePath);
+    const images = [];
+    for (const blip of Array.from(slide.getElementsByTagName('a:blip'))) {
+      const mediaPath = mediaTargets[blip.getAttribute('r:embed')];
+      const mime = mediaPath && imageMime[mediaPath.split('.').pop().toLowerCase()];
+      const entry = mime && zip.file(mediaPath);
+      if (entry) images.push(`<img alt="" src="data:${mime};base64,${await entry.async('base64')}">`);
+    }
+
+    slides.push(`
+      <section class="slide">
+        <h2>Slide ${i + 1}</h2>
+        ${paragraphs.map(text => `<p>${escapeHtmlDept(text)}</p>`).join('')}
+        ${images.join('')}
+      </section>
+    `);
+  }
+  return slides.join('');
+}
+
+function wrapViewerHtml(html) {
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    body { margin: 0; padding: 32px 40px; background: #ffffff; color: #0f172a; font-family: 'Segoe UI', Tahoma, sans-serif; font-size: 14px; line-height: 1.55; }
+    img { max-width: 100%; height: auto; }
+    table { border-collapse: collapse; margin-bottom: 20px; }
+    td, th { border: 1px solid #cbd5e1; padding: 5px 9px; vertical-align: top; }
+    pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-family: Consolas, monospace; font-size: 13px; }
+    .slide { border: 1px solid #cbd5e1; border-radius: 4px; padding: 16px 24px; margin-bottom: 20px; }
+    .slide h2 { margin: 0 0 10px 0; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  </style></head><body>${html}</body></html>`;
+}
+
+function renderViewerMessage(body, title, detail) {
+  body.innerHTML = `
+    <div style="width: 480px; max-width: 100%; margin-top: 60px; background: #ffffff; border-radius: 4px; padding: 32px; text-align: center; font-family: 'Segoe UI', Tahoma, sans-serif; color: #0f172a;">
+      <div style="font-size: 15px; font-weight: 600; margin-bottom: 6px;">${escapeHtmlDept(title)}</div>
+      <div style="font-size: 13px; color: #64748b; margin-bottom: 16px;">${escapeHtmlDept(detail)}</div>
+      <button type="button" class="btn-primary-teal" onclick="downloadDocument('current')" style="padding: 6px 14px; font-size: 12.5px; border-radius: 4px;">Download</button>
+    </div>
+  `;
+}
+
+async function renderUploadedFile(file, body) {
+  const token = ++viewerRenderToken;
+  releaseViewerObjectUrl();
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+
+  // PDF pages and zoom are handled by the browser's own PDF viewer
+  const viewerControls = document.getElementById('viewerControls');
+  if (viewerControls) viewerControls.style.display = ext === 'pdf' ? 'none' : 'flex';
+
+  if (ext === 'pdf') {
+    viewerObjectUrl = URL.createObjectURL(new Blob([file], { type: 'application/pdf' }));
+    body.innerHTML = `<iframe src="${viewerObjectUrl}" title="${escapeHtmlDept(file.name)}" style="flex: 1; align-self: stretch; width: 100%; border: 0; background: #ffffff;"></iframe>`;
+    return;
+  }
+
+  const sheetStyle = `flex: 1; min-height: 0; overflow: auto; width: 100%; background: #ffffff; box-shadow: 0 4px 24px rgba(0,0,0,0.3); transform: scale(${currentViewerZoom}); transform-origin: top left; transition: transform 0.12s ease;`;
+
+  if (VIEWER_IMAGE_TYPES.includes(ext)) {
+    viewerObjectUrl = URL.createObjectURL(file);
+    body.innerHTML = `
+      <div id="viewerSheetContainer" style="${sheetStyle} text-align: center;">
+        <img src="${viewerObjectUrl}" alt="${escapeHtmlDept(file.name)}" style="max-width: 100%; display: inline-block;">
+      </div>
+    `;
+    return;
+  }
+
+  let convert = null;
+  if (ext === 'docx') convert = convertDocxToHtml;
+  else if (ext === 'pptx') convert = convertPptxToHtml;
+  else if (VIEWER_SHEET_TYPES.includes(ext)) convert = convertSheetToHtml;
+  else if (VIEWER_TEXT_TYPES.includes(ext)) convert = async (f) => `<pre>${escapeHtmlDept(await f.text())}</pre>`;
+
+  if (!convert) {
+    renderViewerMessage(body, `Preview is not available for .${ext} files`, `Download "${file.name}" to open the original file.`);
+    return;
+  }
+
+  body.innerHTML = '<div style="margin-top: 60px; color: #ffffff; font-size: 13px;">Loading document...</div>';
+  try {
+    const html = await convert(file);
+    if (token !== viewerRenderToken) return;
+    // Converted content comes from the file itself, so it stays in a sandboxed frame with scripts disabled
+    body.innerHTML = `<div id="viewerSheetContainer" style="${sheetStyle} display: flex;"></div>`;
+    const frame = document.createElement('iframe');
+    frame.title = file.name;
+    frame.setAttribute('sandbox', '');
+    frame.style.cssText = 'flex: 1; width: 100%; border: 0;';
+    frame.srcdoc = wrapViewerHtml(html);
+    document.getElementById('viewerSheetContainer').appendChild(frame);
+  } catch (err) {
+    if (token !== viewerRenderToken) return;
+    renderViewerMessage(body, 'This document could not be previewed', `"${file.name}" could not be read. Download it to open the original file.`);
   }
 }
 
@@ -8059,6 +8285,18 @@ function renderDocViewerSheet() {
     referenceNumber: '454522',
     uploadDate: '11 October 2026'
   };
+
+  const uploadedFile = getUploadedFile(doc);
+  const pageControls = document.getElementById('viewerPageControls');
+  if (pageControls) pageControls.style.display = uploadedFile ? 'none' : 'contents';
+  if (uploadedFile) {
+    renderUploadedFile(uploadedFile, body);
+    return;
+  }
+  viewerRenderToken++;
+  releaseViewerObjectUrl();
+  const viewerControls = document.getElementById('viewerControls');
+  if (viewerControls) viewerControls.style.display = 'flex';
 
   const isPage1 = (currentViewerPage === 1);
   const isXlsx = (doc.type === 'xlsx' || doc.name.endsWith('.xlsx'));
@@ -8388,6 +8626,13 @@ function triggerFileDownload(fileName, doc) {
   const name = (docObj && docObj.name) ? docObj.name : (fileName || 'Document.docx');
   const ext = (name.split('.').pop() || 'docx').toLowerCase();
 
+  // An uploaded document downloads as the original file
+  const uploadedFile = getUploadedFile(docObj);
+  if (uploadedFile) {
+    saveBlobAs(uploadedFile, name);
+    return;
+  }
+
   let mimeType = 'application/octet-stream';
   let content = '';
 
@@ -8453,7 +8698,10 @@ Status: Electronically Approved & Distributed
     content = `INNOMICK TECHNOLOGIES DMS\nDocument: ${name}\nCategory: ${docObj?.category || 'Accreditation Documents'}\nOwner: ${docObj?.owner || 'Admin'}\nDate: ${docObj?.uploadDate || '2026-10-18'}\nDescription: ${docObj?.description || 'Exported document'}`;
   }
 
-  const blob = new Blob([content], { type: mimeType });
+  saveBlobAs(new Blob([content], { type: mimeType }), name);
+}
+
+function saveBlobAs(blob, name) {
   const downloadUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = downloadUrl;
